@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bail Bye — Analyse d'investissement</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#111114;font-family:'Inter',-apple-system,sans-serif;color:#e8e8f0;-webkit-font-smoothing:antialiased;zoom:1.18}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.anim-fade{animation:fadeIn .35s ease both}
+.anim-d1{animation:fadeIn .35s .06s ease both}
+.anim-d2{animation:fadeIn .35s .12s ease both}
+.anim-d3{animation:fadeIn .35s .18s ease both}
+.spin{animation:spin 1s linear infinite}
+.pulse-dot{animation:pulse 1.6s ease-in-out infinite}
+.drag-zone{transition:border-color .2s,background .2s}
+.drag-zone.over{border-color:#c9a227!important;background:rgba(201,162,39,.04)!important}
+.doc-card:hover{background:#181820!important}
+.btn-p{background:#c9a227;transition:opacity .15s,transform .15s;cursor:pointer;border:none}
+.btn-p:hover:not(:disabled){opacity:.88;transform:translateY(-1px)}
+.btn-p:disabled{opacity:.35;cursor:not-allowed}
+.btn-g{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);transition:background .15s;cursor:pointer}
+.btn-g:hover{background:rgba(255,255,255,.07)}
+select{background:#141418;border:1px solid rgba(255,255,255,.08);border-radius:7px;padding:5px 9px;color:#9090b0;font-size:11px;font-family:inherit;outline:none;cursor:pointer}
+textarea{background:#141418;border:1px solid rgba(255,255,255,.08);border-radius:11px;padding:13px 15px;color:#d0d0e8;font-size:13px;font-family:inherit;width:100%;outline:none;resize:vertical;transition:border-color .15s;line-height:1.6}
+textarea:focus{border-color:rgba(201,162,39,.35)}
+::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#2a2a35;border-radius:4px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:3px;border-radius:3px;outline:none;cursor:pointer;display:block;margin:4px 0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#c9a227;border:2px solid #111114;cursor:pointer;box-shadow:0 0 0 3px rgba(201,162,39,.12)}
+input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:#c9a227;border:1px solid #111114;cursor:pointer}
+.tab-btn{cursor:pointer;border:none;outline:none;font-family:inherit;transition:all .15s}
+.tbl-tr:hover>td{background:rgba(255,255,255,.012)!important}
+.acc-hdr{cursor:pointer;user-select:none}
+.sticky-col{position:sticky;left:0;z-index:2;background:#1a1a1e}
+.dtbl td,.dtbl th{white-space:nowrap;padding:7px 12px;font-size:10.5px;border-bottom:1px solid rgba(255,255,255,.03)}
+.dtbl th{font-size:10px;font-weight:600;color:#5a5a90;text-align:right;padding:8px 12px}
+.dtbl th:first-child{text-align:left}
+.sec-hdr-row td{background:#0d0d18!important;color:#c9a227;font-size:9px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;padding:10px 14px!important;border-bottom:1px solid rgba(201,162,39,.08)!important}
+.sec-hdr-row td.sticky-col{background:#0d0d18!important}
+.arrow-btn{width:28px;height:28px;border-radius:7px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s;color:#7070a0}
+.arrow-btn:hover:not(:disabled){background:rgba(255,255,255,.09);color:#c0c0d8}
+.arrow-btn:disabled{opacity:.25;cursor:default}
+.chart-dot{cursor:pointer;border-radius:50%;transition:background .15s}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+<script type="text/babel">
+const{useState,useRef,useEffect,useMemo,useCallback}=React;
+
+/* ── utilities ── */
+const extractPDFText=async f=>{
+  const buf=await f.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  let txt='';
+  for(let i=1;i<=Math.min(pdf.numPages,60);i++){
+    const pg=await pdf.getPage(i);
+    const c=await pg.getTextContent();
+    txt+=`\n[Page ${i}]\n${c.items.map(x=>x.str).join(' ')}`;
+  }
+  return{text:txt,pages:pdf.numPages,charCount:txt.trim().length};
+};
+const readText=f=>new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=()=>rej(new Error('Lecture impossible'));r.readAsText(f,'UTF-8');});
+const callAPI=async payload=>{
+  const res=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error?.message||`Erreur ${res.status}`);}
+  const data=await res.json();
+  const raw=(data.content?.[0]?.text||data.text||'').trim();
+  if(!raw)throw new Error('Réponse vide — réessayez.');
+  const m=raw.match(/\{[\s\S]*\}/);
+  if(!m)throw new Error('Format invalide.');
+  let s=m[0].replace(/:\s*"((?:[^"\\]|\\.)*)"/g,(_,v)=>':"'+v.replace(/\n/g,'\\n').replace(/\r/g,'').replace(/\t/g,' ')+'"');
+  try{return JSON.parse(s);}catch(e){const lb=s.lastIndexOf('}');if(lb>0){try{return JSON.parse(s.slice(0,lb+1));}catch(_){}}throw new Error('Réponse incomplète.');}
+};
+const fmtEur=n=>`${Math.round(n).toLocaleString('fr-FR')} €`;
+const fmtK=n=>{const a=Math.abs(n);if(a>=1e6)return`${(n/1e6).toFixed(2).replace('.',',')} M€`;if(a>=1000)return`${Math.round(n/1000)} k€`;return`${Math.round(n)} €`;};
+const parseAmt=s=>{if(!s)return 0;const n=parseFloat(String(s).replace(/[\s ]/g,'').replace(/[^\d.,-]/g,'').replace(',','.'));return isNaN(n)?0:Math.round(n);};
+
+/* ── icons ── */
+const Ic=({n,s=16,c='currentColor',sw=1.8})=>{
+  const p={
+    upload:<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>,
+    x:<><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>,
+    check:<polyline points="20,6 9,17 4,12"/>,
+    alert:<><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></>,
+    info:<><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></>,
+    bldg:<><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></>,
+    trend:<><polyline points="23,6 13.5,15.5 8.5,10.5 1,18"/><polyline points="17,6 23,6 23,12"/></>,
+    lock:<><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></>,
+    plus:<><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>,
+    doc:<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></>,
+    back:<polyline points="15,18 9,12 15,6"/>,
+    zap:<polygon points="13,2 3,14 12,14 11,22 21,10 12,10 13,2"/>,
+    shield:<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>,
+    euro:<path d="M4 10h12M4 14h12M19 5a9 9 0 1 0 0 14"/>,
+    arrowl:<polyline points="15,18 9,12 15,6"/>,
+    arrowr:<polyline points="9,18 15,12 9,6"/>,
+    chevdown:<polyline points="6,9 12,15 18,9"/>,
+    question:<><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></>,
+    ref:<polyline points="1,4 1,10 7,10"/>,
+  };
+  return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">{p[n]}</svg>;
+};
+
+const DEMO_DATA={
+  verdict:'ATTENTION',
+  synthese:"Le bail commercial analysé présente une rentabilité brute de 6.5%, légèrement en dessous du seuil prime de 7% pour ce type d'actif en zone secondaire. La durée ferme de 6 ans (3/6/9) est satisfaisante, mais la clause d'indexation sur l'ILC plafonnée à 2% limite la progression des revenus. Le locataire (TPE, 12 salariés) présente un bilan 2023 fragile avec un ratio dette/EBITDA de 4.2x. Le diagnostic DPE classé D constitue un risque réglementaire à horizon 2028.",
+  rentabilite:{
+    taux:'6.50',seuilRequis:'7.00',conforme:false,
+    loyerAnnuel:'15 600 €',prixAcquisition:'240 000 €',
+    emplacement:'secondaire',
+    detail:"Rendement brut calculé sur la base du loyer HC HT annuel rapporté au prix d'acquisition négocié. La valeur locative de marché est estimée à 16 200 € / an, soit une légère sous-évaluation de 3.7% du loyer actuel.",
+  },
+  criteres:[
+    {label:'Durée ferme & renouvellement',statut:'ok',bloquant:false,detail:"Bail 3/6/9 avec période ferme de 6 ans courant jusqu'en mars 2028. Clause de résiliation triennale avec préavis de 6 mois. Durée résiduelle : 38 mois."},
+    {label:'Indexation annuelle (ILC)',statut:'attention',bloquant:false,detail:"Indexation sur ILC plafonnée contractuellement à 2% / an, alors que l'ILC a progressé de 4.1% en 2023. Manque à gagner estimé à 320 € / an sur la durée restante."},
+    {label:'Solvabilité locataire',statut:'attention',bloquant:false,detail:"TPE (12 salariés, CA 1.4 M€). Ratio dette nette / EBITDA : 4.2x (seuil d'alerte : 3.5x). Aucun dépôt de garantie supérieur à 3 mois. Pas de caution personnelle du dirigeant."},
+    {label:'Destination & usage',statut:'ok',bloquant:false,detail:"Activité de commerce de détail alimentaire spécialisé. Destination conforme au règlement de copropriété. Aucune transformation structurelle opérée sans autorisation."},
+    {label:'Charges & répartition',statut:'ok',bloquant:false,detail:"Bail « triple net » avec refacturation intégrale : taxe foncière, charges de copropriété, entretien courant. Seuls les gros travaux (art. 606 CC) restent à la charge du bailleur."},
+    {label:'DPE & obligations réglementaires',statut:'ko',bloquant:false,detail:"Diagnostic DPE : classe D (180 kWh/m²/an). Conformément à la loi Climat & Résilience, les logements et locaux classés D devront respecter un seuil de 250 kWh/m² à horizon 2028. Travaux d'isolation estimés à 18 000–24 000 €."},
+    {label:'Cession & sous-location',statut:'ok',bloquant:false,detail:"Clause d'agrément du bailleur requise pour toute cession ou sous-location. Droit de préférence du bailleur en cas de cession du fonds. Conforme aux pratiques du marché."},
+  ],
+  risques:[
+    "DPE classé D : obligation de mise aux normes avant 2028, coût estimé 18 000–24 000 €.",
+    "Locataire fragile financièrement (dette/EBITDA 4.2x) : risque de défaillance modéré.",
+    "Indexation plafonnée à 2% vs ILC réel : érosion du rendement réel en période d'inflation.",
+    "Zone secondaire : liquidité réduite à la revente, cap rate acquéreur potentiellement plus élevé.",
+  ],
+  points_positifs:[
+    "Bail triple net : charges d'exploitation quasi nulles pour le bailleur.",
+    "Durée ferme jusqu'en 2028 : visibilité locative sur 38 mois garantie.",
+    "Loyer légèrement sous la valeur locative de marché : potentiel de revalorisation au renouvellement.",
+    "Destination alimentaire spécialisée : activité résiliente, faible corrélation au e-commerce.",
+  ],
+  documents_manquants:[
+    "Bilans comptables du locataire (exercices 2022 et 2024) non fournis — analyse de solvabilité partielle.",
+    "État des lieux d'entrée absent du dossier — vérification de l'état du local impossible.",
+    "Assurance multirisque professionnelle du locataire non communiquée.",
+  ],
+};
+
+const DOC_TYPES=[
+  {value:'bail',label:'Bail commercial'},{value:'ag',label:"PV d'assemblée générale"},
+  {value:'copro',label:'Règlement de copropriété'},{value:'quittances',label:'Quittances de loyer'},
+  {value:'diag',label:'Diagnostic immobilier (DDT)'},{value:'finance',label:'Données financières'},
+  {value:'autre',label:'Autre document'},
+];
+const STEPS=['Lecture et extraction des documents...','Consolidation des informations...',"Analyse des critères d'investissement...",'Calcul de la rentabilité...','Génération du rapport GO / NO-GO...'];
+
+/* ── FINANCIAL ENGINE ── */
+const computeFinancials=p=>{
+  const{loyerMensuel,prixBien,prixNegocie,dureeCredit,apport,indexation,tva,
+    chargesCopro,taxeFonciere,taxeFonciereRefact,tauxInteret,tauxAssuranceCredit,
+    pretInFine,fraisCreationSociete,fraisDossierBancaire,fraisCourtage,
+    comptabiliteAnnuelle,assurancePNE,gestionLocativePct,chargesDiverses,
+    travauxBailleur,anneeRevente,honoraireAgentRevente,rendementBrutAcquereur,
+    vacanceLocative=0,honorairesAgentAchat=0}=p;
+
+  const droits=Math.round(prixBien*0.08);
+  const honorairesAchat=Math.round(prixNegocie*honorairesAgentAchat/100);
+  const fraisDivers=fraisCreationSociete+fraisDossierBancaire+fraisCourtage+honorairesAchat;
+  const budget=prixNegocie+droits+fraisDivers;
+  const credit=Math.max(0,budget-apport);
+  const mr=tauxInteret/100/12;
+  const nm=Math.max(1,dureeCredit*12);
+  const echeanceMensuelle=pretInFine?(credit*mr):(mr>0?credit*mr/(1-Math.pow(1+mr,-nm)):credit/nm);
+  const assuranceAnnuelle=Math.round(credit*tauxAssuranceCredit/100);
+  const amortFiscal=Math.round(prixBien*0.80/25);
+  const vacanceFactor=1-(vacanceLocative||0)/100;
+
+  let capitalRestant=credit,deficitReporte=0;
+  const rows=[];
+  for(let yr=1;yr<=25;yr++){
+    const loyerBrutTheo=Math.round(loyerMensuel*12*Math.pow(1+indexation/100,yr-1));
+    const loyerBrut=Math.round(loyerBrutTheo*vacanceFactor);
+    let interets=0,capital=0;
+    if(yr<=dureeCredit&&credit>0){
+      if(pretInFine){interets=Math.round(capitalRestant*mr*12);capital=yr===dureeCredit?capitalRestant:0;}
+      else{let cap=capitalRestant;for(let m=0;m<12;m++){const i=cap*mr;const c=echeanceMensuelle-i;interets+=i;capital+=c;cap-=c;}interets=Math.round(interets);capital=Math.round(capital);}
+      capitalRestant=Math.max(0,capitalRestant-capital);
+    }
+    const gestionLoc=Math.round(loyerBrut*gestionLocativePct/100);
+    const tfC=taxeFonciereRefact?0:taxeFonciere;
+    const chargesHorsTravaux=chargesCopro+tfC+gestionLoc+chargesDiverses+comptabiliteAnnuelle+assurancePNE;
+    const chargesExploit=chargesHorsTravaux+travauxBailleur;
+    const resFiscal=loyerBrut-chargesExploit-interets-assuranceAnnuelle-amortFiscal;
+    let IS=0;const base=resFiscal+deficitReporte;
+    if(base>0){deficitReporte=0;IS=Math.round(Math.min(base,38120)*0.15+Math.max(0,base-38120)*0.25);}
+    else{deficitReporte=base;}
+    const loyerTTC=tva?Math.round(loyerBrut*1.20):loyerBrut;
+    const tvaNet=tva?Math.max(0,Math.round(loyerBrut*0.20-chargesExploit*0.10)):0;
+    const echeance=interets+capital;
+    const CF=loyerTTC-echeance-assuranceAnnuelle-chargesExploit-IS-tvaNet;
+    rows.push({annee:yr,loyerBrut,loyerBrutTheo,interets,capital,echeance,
+      capitalRestant,chargesExploit,chargesHorsTravaux,travauxPart:travauxBailleur,
+      IS,tvaNet,CF,resFiscal:Math.round(resFiscal),gestionLoc,tfC});
+  }
+  const revIdx=Math.min(anneeRevente,25)-1;
+  const rev=rows[revIdx]||rows[24];
+  const valRevente=rendementBrutAcquereur>0?Math.round(rev.loyerBrut/(rendementBrutAcquereur/100)):0;
+  const prixNet=Math.round(valRevente*(1-honoraireAgentRevente/100));
+  const produitNet=prixNet-rev.capitalRestant;
+  const cfArr=[-apport,...rows.slice(0,anneeRevente).map(r=>r.CF)];
+  cfArr[anneeRevente]=(cfArr[anneeRevente]||0)+produitNet;
+  const getNPV=r=>cfArr.reduce((s,cf,i)=>s+cf/Math.pow(1+r,i),0);
+  const getDNPV=r=>cfArr.reduce((s,cf,i)=>s-i*cf/Math.pow(1+r,i+1),0);
+  let tri=0.10;
+  for(let i=0;i<200;i++){const d=getDNPV(tri);if(Math.abs(d)<1e-12)break;const next=tri-getNPV(tri)/d;if(Math.abs(next-tri)<1e-9){tri=next;break;}tri=Math.max(-0.99,Math.min(10,next));}
+  const totalCF=rows.slice(0,anneeRevente).reduce((s,r)=>s+r.CF,0);
+  const cfMoisMoyen=Math.round(totalCF/anneeRevente/12);
+  const creation=totalCF+produitNet;
+  const multiple=apport>0?(creation/apport).toFixed(2):'—';
+  const enrichAn=apport>0?Math.round((creation-apport)/anneeRevente):0;
+  const rendBrut=prixNegocie>0?((loyerMensuel*12/prixNegocie)*100).toFixed(2):'0';
+  const cumulData=[];let cum=0;
+  for(let i=0;i<Math.min(anneeRevente,25);i++){
+    cum+=rows[i].CF;
+    cumulData.push({annee:rows[i].annee,v:i===Math.min(anneeRevente,25)-1?cum+produitNet:cum,isRevente:i===Math.min(anneeRevente,25)-1});
+  }
+  return{budget,credit,droits,fraisDivers,honorairesAchat,echeanceMensuelle:Math.round(echeanceMensuelle),
+    assuranceAnnuelle,amortFiscal,rows,valRevente,prixNet,capRestantRevente:rev.capitalRestant,
+    produitNet,tri:(tri*100).toFixed(2),multiple,enrichAn,cfMoisMoyen,totalCF,creation,
+    rendBrut,cumulData};
+};
+
+/* ── SVG CHARTS ── */
+
+// Donut / Pie chart
+const DonutChart=({fin,p})=>{
+  const segs=[
+    {l:'Apport',v:p.apport,c:'#22d3a0'},
+    {l:'Crédit bancaire',v:fin.credit,c:'#6366f1'},
+    {l:'Droits enreg.',v:fin.droits,c:'#c9a227'},
+    {l:'Hon. agent achat',v:fin.honorairesAchat,c:'#f59e0b'},
+    {l:'Autres frais',v:Math.max(0,fin.fraisDivers-fin.honorairesAchat),c:'#a78bfa'},
+  ].filter(s=>s.v>0);
+  const total=segs.reduce((s,x)=>s+x.v,0);
+  if(!total)return null;
+  const R=70,ri=42,cx=90,cy=90;
+  const toXY=(r,ang)=>({x:cx+r*Math.cos((ang-90)*Math.PI/180),y:cy+r*Math.sin((ang-90)*Math.PI/180)});
+  let ang=0;
+  const paths=segs.map(s=>{
+    const sweep=s.v/total*360;
+    const a1=ang,a2=ang+sweep-0.5;
+    ang+=sweep;
+    const s1=toXY(R,a1),e1=toXY(R,a2),s2=toXY(ri,a2),e2=toXY(ri,a1);
+    const large=sweep>180?1:0;
+    const d=`M${s1.x} ${s1.y} A${R} ${R} 0 ${large} 1 ${e1.x} ${e1.y} L${s2.x} ${s2.y} A${ri} ${ri} 0 ${large} 0 ${e2.x} ${e2.y}Z`;
+    return{...s,d,pct:(s.v/total*100).toFixed(1)};
+  });
+  return(
+    <div style={{display:'flex',alignItems:'center',gap:28,flexWrap:'wrap'}}>
+      <svg width={180} height={180} viewBox="0 0 180 180" style={{flexShrink:0}}>
+        {paths.map((p,i)=><path key={i} d={p.d} fill={p.c} opacity={0.92}/>)}
+        <circle cx={cx} cy={cy} r={ri-1} fill="#111116"/>
+        <text x={cx} y={cy-8} textAnchor="middle" fill="#c0c0d8" fontSize={11} fontWeight={700} fontFamily="Inter,sans-serif">Budget</text>
+        <text x={cx} y={cy+10} textAnchor="middle" fill="#e0e0f0" fontSize={13} fontWeight={900} fontFamily="Inter,sans-serif">{fmtK(total)}</text>
+      </svg>
+      <div style={{flex:1,display:'flex',flexDirection:'column',gap:10}}>
+        {paths.map((s,i)=>(
+          <div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+              <div style={{width:9,height:9,borderRadius:2,background:s.c,flexShrink:0}}/>
+              <span style={{fontSize:11,color:'#9090b8'}}>{s.l}</span>
+            </div>
+            <div style={{display:'flex',gap:8,alignItems:'center'}}>
+              <span style={{fontSize:11,fontWeight:700,color:'#d0d0e8'}}>{fmtEur(s.v)}</span>
+              <span style={{fontSize:10,color:'#50506a'}}>{s.pct}%</span>
+            </div>
+          </div>
+        ))}
+        <div style={{marginTop:4,paddingTop:10,borderTop:'1px solid rgba(255,255,255,.05)',display:'flex',justifyContent:'space-between'}}>
+          <span style={{fontSize:11,color:'#6060a0'}}>Total budget</span>
+          <span style={{fontSize:12,fontWeight:800,color:'#f0f0f5'}}>{fmtEur(total)}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Cash-flow bar chart
+const CashFlowBar=({rows,anneeRevente})=>{
+  const data=rows.slice(0,Math.min(anneeRevente,25));
+  const vals=data.map(r=>r.CF);
+  const maxAbs=Math.max(1,...vals.map(Math.abs));
+  const W=540,H=140,padL=48,padR=8,padT=10,padB=22;
+  const bw=Math.max(4,Math.floor((W-padL-padR)/data.length-2));
+  const step=padL+(W-padL-padR)/data.length;
+  const zeroY=padT+H/2;
+  const scale=v=>(H/2)/maxAbs*v;
+  const ticks=[-maxAbs,-maxAbs/2,0,maxAbs/2,maxAbs];
+  return(
+    <svg width="100%" viewBox={`0 0 ${W} ${H+padT+padB}`} style={{overflow:'visible'}}>
+      {ticks.map((t,i)=>{
+        const y=zeroY-scale(t);
+        return<g key={i}><line x1={padL} x2={W-padR} y1={y} y2={y} stroke="rgba(255,255,255,.04)" strokeWidth={t===0?1.5:0.5}/><text x={padL-6} y={y+4} textAnchor="end" fontSize={8} fill="#404060">{t===0?'0':fmtK(t)}</text></g>;
+      })}
+      {data.map((r,i)=>{
+        const h=Math.max(2,Math.abs(scale(r.CF)));
+        const x=padL+i*step+(step-bw)/2;
+        const positive=r.CF>=0;
+        const isRev=r.annee===anneeRevente;
+        return<g key={i}>
+          <rect x={x} y={positive?zeroY-h:zeroY} width={bw} height={h} fill={isRev?'#c9a227':positive?'#22d3a0':'#ef4444'} opacity={isRev?1:0.8} rx={1}/>
+          {isRev&&<text x={x+bw/2} y={padT+2} textAnchor="middle" fontSize={8} fill="#c9a227">★</text>}
+          {data.length<=15&&<text x={x+bw/2} y={H+padT+padB-4} textAnchor="middle" fontSize={8} fill="#404060">{r.annee}</text>}
+          {data.length>15&&i%5===0&&<text x={x+bw/2} y={H+padT+padB-4} textAnchor="middle" fontSize={8} fill="#404060">{r.annee}</text>}
+        </g>;
+      })}
+      <line x1={padL} x2={W-padR} y1={zeroY} y2={zeroY} stroke="rgba(255,255,255,.15)" strokeWidth={1}/>
+    </svg>
+  );
+};
+
+// Cumulative area chart
+const CumulativeArea=({cumulData,apport})=>{
+  if(!cumulData||!cumulData.length)return null;
+  const vals=cumulData.map(d=>d.v);
+  const minV=Math.min(-apport,...vals);
+  const maxV=Math.max(0,...vals);
+  const range=Math.max(1,maxV-minV);
+  const W=540,H=150,padL=52,padR=8,padT=12,padB=22;
+  const toX=i=>padL+(W-padL-padR)*i/(cumulData.length-1||1);
+  const toY=v=>padT+H-(v-minV)/range*H;
+  const zeroY=toY(0);
+  const pts=cumulData.map((d,i)=>`${toX(i)},${toY(d.v)}`).join(' ');
+  const area=`M${toX(0)},${zeroY} ${cumulData.map((d,i)=>`L${toX(i)},${toY(d.v)}`).join(' ')} L${toX(cumulData.length-1)},${zeroY}Z`;
+  const ticks=[minV,minV+(maxV-minV)*0.25,minV+(maxV-minV)*0.5,minV+(maxV-minV)*0.75,maxV];
+  return(
+    <svg width="100%" viewBox={`0 0 ${W} ${H+padT+padB}`} style={{overflow:'visible'}}>
+      <defs>
+        <linearGradient id="ag" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#22d3a0" stopOpacity="0.25"/>
+          <stop offset="100%" stopColor="#22d3a0" stopOpacity="0.02"/>
+        </linearGradient>
+      </defs>
+      {ticks.map((t,i)=>{
+        const y=toY(t);
+        return<g key={i}><line x1={padL} x2={W-padR} y1={y} y2={y} stroke="rgba(255,255,255,.04)" strokeWidth={t===0?1.5:0.5}/><text x={padL-5} y={y+4} textAnchor="end" fontSize={8} fill="#404060">{fmtK(t)}</text></g>;
+      })}
+      {zeroY>=padT&&zeroY<=padT+H&&<line x1={padL} x2={W-padR} y1={zeroY} y2={zeroY} stroke="rgba(255,255,255,.15)" strokeWidth={1}/>}
+      <path d={area} fill="url(#ag)"/>
+      <polyline points={pts} fill="none" stroke="#22d3a0" strokeWidth={2} strokeLinejoin="round"/>
+      {cumulData.map((d,i)=>(
+        d.isRevente&&<g key={i}>
+          <circle cx={toX(i)} cy={toY(d.v)} r={5} fill="#c9a227" stroke="#111114" strokeWidth={2}/>
+          <text x={toX(i)} y={toY(d.v)-10} textAnchor="middle" fontSize={9} fill="#c9a227">★ An {d.annee}</text>
+        </g>
+      ))}
+      {cumulData.length<=15&&cumulData.map((d,i)=>(
+        <text key={i} x={toX(i)} y={H+padT+padB-4} textAnchor="middle" fontSize={8} fill="#404060">{d.annee}</text>
+      ))}
+      {cumulData.length>15&&cumulData.filter((_,i)=>i%5===0).map((d,i)=>(
+        <text key={i} x={toX(cumulData.indexOf(d))} y={H+padT+padB-4} textAnchor="middle" fontSize={8} fill="#404060">{d.annee}</text>
+      ))}
+    </svg>
+  );
+};
+
+// Amortissement stacked chart
+const AmortChart=({rows,dureeCredit})=>{
+  const data=rows.filter(r=>r.annee<=dureeCredit&&(r.interets>0||r.capital>0));
+  if(!data.length)return<div style={{color:'#40405a',fontSize:12,textAlign:'center',padding:32}}>Pas de crédit</div>;
+  const maxV=Math.max(...data.map(r=>r.interets+r.capital));
+  const W=540,H=150,padL=52,padR=8,padT=10,padB=22;
+  const bw=Math.max(4,Math.floor((W-padL-padR)/data.length-2));
+  const step=(W-padL-padR)/data.length;
+  const scaleH=v=>H*v/Math.max(1,maxV);
+  return(
+    <svg width="100%" viewBox={`0 0 ${W} ${H+padT+padB}`} style={{overflow:'visible'}}>
+      {[0,0.25,0.5,0.75,1].map((t,i)=>{
+        const v=maxV*t,y=padT+H-scaleH(v);
+        return<g key={i}><line x1={padL} x2={W-padR} y1={y} y2={y} stroke="rgba(255,255,255,.04)" strokeWidth={0.5}/><text x={padL-5} y={y+4} textAnchor="end" fontSize={8} fill="#404060">{fmtK(v)}</text></g>;
+      })}
+      {data.map((r,i)=>{
+        const x=padL+i*step+(step-bw)/2;
+        const hCap=scaleH(r.capital),hInt=scaleH(r.interets);
+        const yBase=padT+H;
+        return<g key={i}>
+          <rect x={x} y={yBase-hCap} width={bw} height={hCap} fill="#22d3a0" opacity={0.85} rx={1}/>
+          <rect x={x} y={yBase-hCap-hInt} width={bw} height={hInt} fill="#c9a227" opacity={0.75} rx={1}/>
+          {data.length<=20&&i%5===0&&<text x={x+bw/2} y={H+padT+padB-4} textAnchor="middle" fontSize={8} fill="#404060">{r.annee}</text>}
+        </g>;
+      })}
+      <g style={{fontSize:9,fill:'#50506a'}}>
+        <rect x={padL} y={2} width={8} height={8} fill="#22d3a0" rx={1}/><text x={padL+11} y={10}>Capital</text>
+        <rect x={padL+55} y={2} width={8} height={8} fill="#c9a227" rx={1}/><text x={padL+66} y={10}>Intérêts</text>
+      </g>
+    </svg>
+  );
+};
+
+// Rendement locatif net area chart
+const RendChart=({rows,prixNegocie,chargesCopro,taxeFonciere,taxeFonciereRefact})=>{
+  const tf=taxeFonciereRefact?0:taxeFonciere;
+  const data=rows.map(r=>({annee:r.annee,rend:(r.loyerBrut-chargesCopro-tf)/Math.max(1,prixNegocie)*100}));
+  const vals=data.map(d=>d.v||d.rend);
+  const minV=Math.max(0,Math.min(...vals)-0.5);
+  const maxV=Math.max(...vals)+0.5;
+  const range=Math.max(0.01,maxV-minV);
+  const W=540,H=140,padL=38,padR=8,padT=10,padB=22;
+  const toX=i=>padL+(W-padL-padR)*i/(data.length-1||1);
+  const toY=v=>padT+H-(v-minV)/range*H;
+  const pts=data.map((d,i)=>`${toX(i)},${toY(d.rend)}`).join(' ');
+  const area=`M${toX(0)},${toY(minV)} ${data.map((d,i)=>`L${toX(i)},${toY(d.rend)}`).join(' ')} L${toX(data.length-1)},${toY(minV)}Z`;
+  return(
+    <svg width="100%" viewBox={`0 0 ${W} ${H+padT+padB}`}>
+      <defs><linearGradient id="rg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#c9a227" stopOpacity="0.2"/><stop offset="100%" stopColor="#c9a227" stopOpacity="0.01"/></linearGradient></defs>
+      {[0,0.25,0.5,0.75,1].map((t,i)=>{const v=minV+range*t;const y=toY(v);return<g key={i}><line x1={padL} x2={W-padR} y1={y} y2={y} stroke="rgba(255,255,255,.04)" strokeWidth={0.5}/><text x={padL-4} y={y+4} textAnchor="end" fontSize={8} fill="#404060">{v.toFixed(1)}%</text></g>;})}
+      <path d={area} fill="url(#rg)"/>
+      <polyline points={pts} fill="none" stroke="#c9a227" strokeWidth={2} strokeLinejoin="round"/>
+      {data.filter((_,i)=>i%5===0||i===data.length-1).map((d,i)=>(
+        <text key={i} x={toX(data.indexOf(d))} y={H+padT+padB-4} textAnchor="middle" fontSize={8} fill="#404060">An {d.annee}</text>
+      ))}
+    </svg>
+  );
+};
+
+// Chart Carousel
+const CHARTS=[
+  {key:'cf',title:'Flux de trésorerie annuels',sub:'Cash-flow par année'},
+  {key:'cumul',title:'Enrichissement cumulé',sub:'Progression du patrimoine'},
+  {key:'amort',title:'Amortissement du crédit',sub:'Capital vs intérêts'},
+  {key:'rend',title:'Rendement locatif net',sub:'Évolution sur 25 ans'},
+];
+const ChartCarousel=({fin,p})=>{
+  const [idx,setIdx]=useState(0);
+  const cur=CHARTS[idx];
+  const renderChart=()=>{
+    if(cur.key==='cf')return<CashFlowBar rows={fin.rows} anneeRevente={p.anneeRevente}/>;
+    if(cur.key==='cumul')return<CumulativeArea cumulData={fin.cumulData} apport={p.apport}/>;
+    if(cur.key==='amort')return<AmortChart rows={fin.rows} dureeCredit={p.dureeCredit}/>;
+    if(cur.key==='rend')return<RendChart rows={fin.rows} prixNegocie={p.prixNegocie} chargesCopro={p.chargesCopro} taxeFonciere={p.taxeFonciere} taxeFonciereRefact={p.taxeFonciereRefact}/>;
+    return null;
+  };
+  return(
+    <div style={{background:'#1a1a1e',border:'1px solid rgba(255,255,255,.07)',borderRadius:14,padding:'18px 20px'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
+        <div>
+          <div style={{fontSize:12,fontWeight:700,color:'#d0d0e8'}}>{cur.title}</div>
+          <div style={{fontSize:10,color:'#60609a',marginTop:2}}>{cur.sub}</div>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <div style={{display:'flex',gap:4}}>
+            {CHARTS.map((_,i)=>(
+              <div key={i} className="chart-dot" onClick={()=>setIdx(i)} style={{width:6,height:6,background:i===idx?'#c9a227':'rgba(255,255,255,.15)'}}/>
+            ))}
+          </div>
+          <span style={{fontSize:10,color:'#40405a',marginLeft:4}}>{idx+1}/{CHARTS.length}</span>
+          <div style={{display:'flex',gap:4}}>
+            <button className="arrow-btn" disabled={idx===0} onClick={()=>setIdx(i=>i-1)}><Ic n="arrowl" s={12} c="currentColor"/></button>
+            <button className="arrow-btn" disabled={idx===CHARTS.length-1} onClick={()=>setIdx(i=>i+1)}><Ic n="arrowr" s={12} c="currentColor"/></button>
+          </div>
+        </div>
+      </div>
+      <div style={{minHeight:180}}>{renderChart()}</div>
+    </div>
+  );
+};
+
+/* ── DETAILED TABLE ── */
+const DetailedTable=({fin,p})=>{
+  const rows=fin.rows;
+  const tf=p.taxeFonciereRefact?0:p.taxeFonciere;
+  const capitalRembCumul=[];let cum=0;rows.forEach(r=>{cum+=r.capital;capitalRembCumul.push(cum);});
+  const dash='—';
+  const pos=(v,f)=>v>0?(f?f(v):fmtEur(v)):dash;
+  const signed=(v)=>(v>=0?'+':'')+fmtEur(v);
+  const pct=(v)=>v.toFixed(2)+'%';
+
+  const sections=[
+    {title:'LOYERS',rows:[
+      {label:'Loyers bruts HT HC',vals:rows.map(r=>fmtEur(r.loyerBrut))},
+      {label:'Vacance (mois)',vals:rows.map(r=>p.vacanceLocative>0?(r.loyerBrutTheo-r.loyerBrut>0?(p.vacanceLocative/100*12).toFixed(1):dash):dash)},
+      {label:'Coût vacance',vals:rows.map(r=>r.loyerBrutTheo-r.loyerBrut>0?`−${fmtEur(r.loyerBrutTheo-r.loyerBrut)}`:'0 €')},
+      {label:'Charges copropriété',vals:rows.map(()=>fmtEur(p.chargesCopro))},
+      {label:'Taxe foncière',vals:rows.map(()=>fmtEur(tf))},
+      {label:'Loyers nets',vals:rows.map(r=>fmtEur(r.loyerBrut-p.chargesCopro-tf)),bold:true},
+      {label:'Rendement locatif net',vals:rows.map(r=>p.prixNegocie>0?pct((r.loyerBrut-p.chargesCopro-tf)/p.prixNegocie*100):dash),color:'#c9a227'},
+    ]},
+    {title:'CRÉDIT BANCAIRE',rows:[
+      {label:'Intérêts',vals:rows.map(r=>pos(r.interets))},
+      {label:'Capital remboursé',vals:rows.map(r=>pos(r.capital))},
+      {label:'Échéance annuelle',vals:rows.map(r=>pos(r.echeance))},
+      {label:'Capital restant dû',vals:rows.map(r=>pos(r.capitalRestant))},
+      {label:'IRA',vals:rows.map(()=>dash)},
+      {label:'Assurance crédit',vals:rows.map(r=>r.annee<=p.dureeCredit?fmtEur(fin.assuranceAnnuelle):dash)},
+    ]},
+    {title:"CHARGES D'EXPLOITATION",rows:[
+      {label:'Gestion locative',vals:rows.map(r=>pos(r.gestionLoc))},
+      {label:'Travaux bailleur',vals:rows.map(()=>pos(p.travauxBailleur))},
+      {label:'Comptabilité',vals:rows.map(()=>fmtEur(p.comptabiliteAnnuelle))},
+      {label:'Assurance PNE',vals:rows.map(()=>fmtEur(p.assurancePNE))},
+      {label:'Charges diverses',vals:rows.map(()=>pos(p.chargesDiverses))},
+    ]},
+    {title:'FISCALITÉ',rows:[
+      {label:'Amortissement fiscal',vals:rows.map(()=>fmtEur(fin.amortFiscal))},
+      {label:'Résultat fiscal',vals:rows.map(r=>signed(r.resFiscal)),color:null,dynamic:true},
+      {label:'Impôt IS',vals:rows.map(r=>pos(r.IS))},
+    ]},
+    {title:'TVA',rows:[
+      {label:'TVA collectée',vals:rows.map(r=>p.tva?fmtEur(Math.round(r.loyerBrut*0.20)):dash)},
+      {label:'Trésorerie TVA',vals:rows.map(r=>p.tva?(r.tvaNet>0?fmtEur(r.tvaNet):dash):dash)},
+    ]},
+    {title:'CASH-FLOW & PATRIMOINE',rows:[
+      {label:'Cash-flow / an',vals:rows.map(r=>signed(r.CF)),dynamic:true,bold:true},
+      {label:'Cash-flow / mois',vals:rows.map(r=>signed(Math.round(r.CF/12))),dynamic:true},
+      {label:'Capital remb. cumulé',vals:capitalRembCumul.map(v=>v>0?fmtEur(v):dash)},
+    ]},
+  ];
+
+  const getCellColor=(row,val,yr)=>{
+    if(row.dynamic){const n=parseFloat(val.replace(/[^\d.,-]/g,'').replace(',','.'));return n>=0?'#22d3a0':'#ef4444';}
+    if(row.color)return row.color;
+    return undefined;
+  };
+
+  return(
+    <div style={{background:'#1a1a1e',border:'1px solid rgba(255,255,255,.07)',borderRadius:14,overflow:'hidden'}}>
+      <div style={{padding:'14px 18px',borderBottom:'1px solid rgba(255,255,255,.05)'}}>
+        <div style={{fontSize:12,fontWeight:700,color:'#d0d0e8'}}>Détail financier sur 25 ans</div>
+        <div style={{fontSize:10,color:'#50507a',marginTop:2}}>Toutes les lignes · défilement horizontal</div>
+      </div>
+      <div style={{overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
+        <table className="dtbl" style={{borderCollapse:'collapse',minWidth:1900,width:'100%'}}>
+          <thead>
+            <tr style={{background:'#111116'}}>
+              <th className="sticky-col" style={{textAlign:'left',minWidth:170,fontWeight:700,color:'#6060a0',fontSize:10,padding:'9px 14px',background:'#111116',zIndex:3}}>Ligne</th>
+              {rows.map(r=><th key={r.annee} style={{minWidth:76,textAlign:'right',color:r.annee===p.anneeRevente?'#c9a227':'#5a5a90'}}>{r.annee===p.anneeRevente?`★ An ${r.annee}`:`An ${r.annee}`}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {sections.map((sec,si)=>[
+              <tr key={`s${si}`} className="sec-hdr-row">
+                <td className="sticky-col" style={{background:'#0d0d18',color:'#c9a227',fontSize:9,fontWeight:800,letterSpacing:'1.2px',textTransform:'uppercase',padding:'10px 14px',borderBottom:'1px solid rgba(201,162,39,.08)'}}>{sec.title}</td>
+                {rows.map(r=><td key={r.annee} style={{background:'#0d0d18',borderBottom:'1px solid rgba(201,162,39,.08)'}}/>)}
+              </tr>,
+              ...sec.rows.map((row,ri)=>(
+                <tr key={`${si}-${ri}`} className="tbl-tr">
+                  <td className="sticky-col" style={{color:'#a0a0c0',fontWeight:row.bold?600:400,fontSize:11,padding:'8px 14px',background:'#1a1a1e',borderRight:'1px solid rgba(255,255,255,.04)'}}>{row.label}</td>
+                  {row.vals.map((val,yi)=>{
+                    const clr=getCellColor(row,val,yi);
+                    const isRev=rows[yi].annee===p.anneeRevente;
+                    return<td key={yi} style={{textAlign:'right',color:clr||(row.bold?'#d0d0e8':'#8080a8'),fontWeight:row.bold?700:400,background:isRev?'rgba(201,162,39,.03)':'transparent',fontSize:10.5}}>{val}</td>;
+                  })}
+                </tr>
+              ))
+            ])}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+/* ── SIMULATOR PRIMITIVES ── */
+const SliderRow=({label,value,min,max,step,unit,onChange,sub})=>{
+  const[editing,setEditing]=useState(false);
+  const[tmp,setTmp]=useState('');
+  const pct=((value-min)/(max-min)*100).toFixed(1);
+  const disp=unit==='€'?fmtEur(value):unit==='%'?`${parseFloat(value.toFixed(2))} %`:`${value} ${unit}`;
+  const commit=()=>{
+    let n=parseFloat(String(tmp).replace(/\s/g,'').replace(',','.').replace(/[^\d.-]/g,''));
+    if(!isNaN(n))onChange(Math.max(min,Math.min(max,n)));
+    setEditing(false);
+  };
+  return(
+    <div style={{marginBottom:16}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:5}}>
+        <span style={{fontSize:11,color:'#8080a8'}}>{label}</span>
+        {editing?(
+          <input autoFocus type="text" inputMode="decimal" value={tmp}
+            onChange={e=>setTmp(e.target.value)}
+            onBlur={commit}
+            onKeyDown={e=>{if(e.key==='Enter')commit();if(e.key==='Escape')setEditing(false);}}
+            style={{width:84,textAlign:'right',background:'#0d0d14',border:'1px solid rgba(201,162,39,.45)',borderRadius:6,color:'#f5f5fa',fontSize:13,fontWeight:700,padding:'2px 7px',fontFamily:'inherit',outline:'none'}}/>
+        ):(
+          <span onClick={()=>{setTmp(String(value));setEditing(true);}} title="Cliquer pour saisir une valeur"
+            style={{fontSize:13,fontWeight:700,color:'#e8e8f5',letterSpacing:'-0.3px',cursor:'text',borderBottom:'1px dashed rgba(255,255,255,.22)',paddingBottom:1}}>{disp}</span>
+        )}
+      </div>
+      <input type="range" min={min} max={max} step={step} value={value} onChange={e=>onChange(Number(e.target.value))}
+        style={{background:`linear-gradient(to right,#c9a227 ${pct}%,#1e1e26 ${pct}%)`}}/>
+      {sub&&<div style={{fontSize:10,color:'#505070',marginTop:3}}>{sub}</div>}
+    </div>
+  );
+};
+const TogRow=({label,value,onChange,sub})=>(
+  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
+    <div><div style={{fontSize:11,color:'#8080a8'}}>{label}</div>{sub&&<div style={{fontSize:10,color:'#505070',marginTop:1}}>{sub}</div>}</div>
+    <div onClick={()=>onChange(!value)} style={{width:34,height:19,borderRadius:10,cursor:'pointer',position:'relative',flexShrink:0,marginLeft:12,background:value?'#c9a227':'#1a1a24',border:`1px solid ${value?'rgba(201,162,39,.5)':'rgba(255,255,255,.08)'}`,transition:'all .2s'}}>
+      <div style={{position:'absolute',top:3,left:value?16:3,width:11,height:11,borderRadius:'50%',background:value?'#111':'#3a3a4a',transition:'left .2s'}}/>
+    </div>
+  </div>
+);
+const SecHdr=({label})=>(
+  <div style={{fontSize:9,color:'#c9a227',fontWeight:700,textTransform:'uppercase',letterSpacing:'1px',marginBottom:12,paddingBottom:8,borderBottom:'1px solid rgba(255,255,255,.05)'}}>{label}</div>
+);
+const AccSection=({title,sub,badge,children,isOpen,onToggle})=>(
+  <div style={{background:'#1a1a1e',border:'1px solid rgba(255,255,255,.07)',borderRadius:14,overflow:'hidden'}}>
+    <div className="acc-hdr" onClick={onToggle} style={{padding:'15px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+      <div style={{display:'flex',alignItems:'center',gap:10}}>
+        <span style={{fontSize:13,fontWeight:600,color:'#d0d0e8'}}>{title}</span>
+        {sub&&<span style={{fontSize:10,color:'#50507a'}}>{sub}</span>}
+        {badge&&<span style={{fontSize:10,color:'#c9a227',background:'rgba(201,162,39,.08)',border:'1px solid rgba(201,162,39,.18)',borderRadius:5,padding:'2px 8px',fontWeight:700}}>{badge}</span>}
+      </div>
+      <div style={{width:24,height:24,borderRadius:7,background:'rgba(255,255,255,.04)',display:'flex',alignItems:'center',justifyContent:'center',transition:'transform .22s',transform:isOpen?'rotate(180deg)':'none'}}>
+        <Ic n="chevdown" s={12} c="#50507a"/>
+      </div>
+    </div>
+    {isOpen&&<div style={{padding:'0 20px 20px',borderTop:'1px solid rgba(255,255,255,.04)'}}><div style={{paddingTop:18}}>{children}</div></div>}
+  </div>
+);
+const MKpi=({label,value,sub,color,border})=>(
+  <div style={{background:'#111116',border:`1px solid ${border||'rgba(255,255,255,.06)'}`,borderRadius:11,padding:'15px 16px'}}>
+    <div style={{fontSize:9,color:'#60608a',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.8px',marginBottom:10}}>{label}</div>
+    <div style={{fontSize:22,fontWeight:800,color:color||'#f0f0f5',letterSpacing:'-0.5px',lineHeight:1}}>{value}</div>
+    {sub&&<div style={{fontSize:10,color:'#50507a',marginTop:6,lineHeight:1.4}}>{sub}</div>}
+  </div>
+);
+const MHero=({label,value,sub,color,border})=>(
+  <div style={{background:'#111116',border:`1px solid ${border||'rgba(255,255,255,.06)'}`,borderRadius:12,padding:'20px 18px',flex:1}}>
+    <div style={{fontSize:9,color:'#60608a',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.9px',marginBottom:10}}>{label}</div>
+    <div style={{fontSize:38,fontWeight:900,color:color||'#f0f0f5',letterSpacing:'-2px',lineHeight:1}}>{value}</div>
+    {sub&&<div style={{fontSize:10,color:'#40406a',marginTop:7}}>{sub}</div>}
+  </div>
+);
+
+/* ── FINANCIAL SIMULATOR ── */
+const FinancialSimulator=({prefill})=>{
+  const iL=prefill?.loyerAnnuel?Math.max(300,Math.round(parseAmt(prefill.loyerAnnuel)/12)):1300;
+  const iP=prefill?.prixAcquisition?Math.max(50000,parseAmt(prefill.prixAcquisition)):200000;
+  const [p,setP]=useState({
+    loyerMensuel:iL,prixBien:iP,prixNegocie:Math.round(iP*0.98),
+    dureeCredit:20,apport:Math.round(iP*0.17),indexation:2.0,
+    tva:false,chargesCopro:1200,taxeFonciere:1800,taxeFonciereRefact:false,
+    tauxInteret:3.5,tauxAssuranceCredit:0.25,pretInFine:false,vacanceLocative:0,
+    honorairesAgentAchat:5.0,
+    fraisCreationSociete:1500,fraisDossierBancaire:500,fraisCourtage:1500,
+    comptabiliteAnnuelle:1200,assurancePNE:800,gestionLocativePct:0,
+    chargesDiverses:500,travauxBailleur:500,
+    anneeRevente:10,honoraireAgentRevente:5.0,rendementBrutAcquereur:6.0,
+  });
+  const [secs,setSecs]=useState({revenus:true,revente:true});
+  const set=k=>v=>setP(prev=>({...prev,[k]:v}));
+  const tog=k=>setSecs(s=>({...s,[k]:!s[k]}));
+  const fin=useMemo(()=>computeFinancials(p),[p]);
+
+  const wealthCreated=fin.creation-p.apport;
+  const multipleNet=p.apport>0?(wealthCreated/p.apport).toFixed(2):'—';
+  const loyerMoyenNet=Math.round(fin.rows.slice(0,p.anneeRevente).reduce((s,r)=>s+r.loyerBrut,0)/Math.max(1,p.anneeRevente));
+  const cfMoyenAnnuel=Math.round(fin.totalCF/Math.max(1,p.anneeRevente));
+  const echeanceAnnuelle=fin.echeanceMensuelle*12;
+  const triVal=parseFloat(fin.tri);
+  const triC=triVal>=9?'#22d3a0':triVal>=6?'#c9a227':triVal>=4?'#f59e0b':'#ef4444';
+  const triB=triVal>=9?'rgba(34,211,160,.15)':triVal>=6?'rgba(201,162,39,.15)':'rgba(239,68,68,.1)';
+
+  return(
+    <div style={{display:'flex',gap:18,alignItems:'flex-start'}}>
+      {/* LEFT */}
+      <div style={{width:275,flexShrink:0,overflowY:'auto',maxHeight:'84vh',background:'#1a1a1e',border:'1px solid rgba(255,255,255,.07)',borderRadius:16,padding:'15px 13px',scrollbarWidth:'thin'}}>
+        <div style={{marginBottom:18}}>
+          <SecHdr label="Bien & Loyer"/>
+          <SliderRow label="Loyer mensuel HC HT" value={p.loyerMensuel} min={300} max={20000} step={100} unit="€" onChange={set('loyerMensuel')} sub={`${fmtEur(p.loyerMensuel*12)} / an · Rdt ${fin.rendBrut}%`}/>
+          <SliderRow label="Prix bien FAI" value={p.prixBien} min={50000} max={5000000} step={5000} unit="€" onChange={set('prixBien')}/>
+          <SliderRow label="Prix négocié FAI" value={p.prixNegocie} min={50000} max={p.prixBien} step={5000} unit="€" onChange={set('prixNegocie')}/>
+          <SliderRow label="Hon. agent à l'achat" value={p.honorairesAgentAchat} min={0} max={10} step={0.25} unit="%" onChange={set('honorairesAgentAchat')} sub={`soit ${fmtEur(fin.honorairesAchat)}`}/>
+        </div>
+        <div style={{marginBottom:18}}>
+          <SecHdr label="Financement"/>
+          <SliderRow label="Apport personnel" value={p.apport} min={0} max={Math.round(p.prixNegocie*.6)} step={1000} unit="€" onChange={set('apport')} sub={`Crédit : ${fmtK(fin.credit)}`}/>
+          <SliderRow label="Durée crédit" value={p.dureeCredit} min={5} max={25} step={1} unit="ans" onChange={set('dureeCredit')} sub={`Échéance : ${fmtEur(fin.echeanceMensuelle)} / mois`}/>
+          <SliderRow label="Taux d'intérêt" value={p.tauxInteret} min={1.0} max={7.0} step={0.05} unit="%" onChange={set('tauxInteret')}/>
+          <SliderRow label="Assurance crédit" value={p.tauxAssuranceCredit} min={0} max={1.0} step={0.05} unit="%" onChange={set('tauxAssuranceCredit')}/>
+          <TogRow label="Prêt in fine" value={p.pretInFine} onChange={set('pretInFine')} sub="Intérêts seulement"/>
+        </div>
+        <div style={{marginBottom:18}}>
+          <SecHdr label="Location & Fiscalité"/>
+          <SliderRow label="Vacance locative" value={p.vacanceLocative} min={0} max={20} step={0.5} unit="%" onChange={set('vacanceLocative')}/>
+          <SliderRow label="Indexation (ILAT)" value={p.indexation} min={0} max={5} step={0.1} unit="%" onChange={set('indexation')}/>
+          <TogRow label="TVA sur loyers" value={p.tva} onChange={set('tva')} sub="Loyer TTC × 1.20"/>
+          <SliderRow label="Charges copro" value={p.chargesCopro} min={0} max={10000} step={100} unit="€" onChange={set('chargesCopro')}/>
+          <SliderRow label="Taxe foncière" value={p.taxeFonciere} min={0} max={15000} step={100} unit="€" onChange={set('taxeFonciere')}/>
+          <TogRow label="TF refacturable" value={p.taxeFonciereRefact} onChange={set('taxeFonciereRefact')}/>
+        </div>
+        <div style={{marginBottom:18}}>
+          <SecHdr label="Frais & Exploitation"/>
+          <SliderRow label="Frais création société" value={p.fraisCreationSociete} min={0} max={5000} step={100} unit="€" onChange={set('fraisCreationSociete')}/>
+          <SliderRow label="Frais dossier bancaire" value={p.fraisDossierBancaire} min={0} max={3000} step={100} unit="€" onChange={set('fraisDossierBancaire')}/>
+          <SliderRow label="Frais courtage" value={p.fraisCourtage} min={0} max={5000} step={100} unit="€" onChange={set('fraisCourtage')}/>
+          <SliderRow label="Comptabilité / an" value={p.comptabiliteAnnuelle} min={0} max={5000} step={100} unit="€" onChange={set('comptabiliteAnnuelle')}/>
+          <SliderRow label="Assurance PNE / an" value={p.assurancePNE} min={0} max={3000} step={50} unit="€" onChange={set('assurancePNE')}/>
+          <SliderRow label="Gestion locative" value={p.gestionLocativePct} min={0} max={15} step={0.5} unit="%" onChange={set('gestionLocativePct')}/>
+          <SliderRow label="Charges diverses / an" value={p.chargesDiverses} min={0} max={5000} step={100} unit="€" onChange={set('chargesDiverses')}/>
+          <SliderRow label="Travaux bailleur / an" value={p.travauxBailleur} min={0} max={10000} step={100} unit="€" onChange={set('travauxBailleur')}/>
+        </div>
+        <div>
+          <SecHdr label="Hypothèse de revente"/>
+          <SliderRow label="Année de revente" value={p.anneeRevente} min={1} max={25} step={1} unit="an" onChange={set('anneeRevente')}/>
+          <SliderRow label="Hon. agent revente" value={p.honoraireAgentRevente} min={0} max={10} step={0.5} unit="%" onChange={set('honoraireAgentRevente')}/>
+          <SliderRow label="Rdt brut acquéreur" value={p.rendementBrutAcquereur} min={3} max={12} step={0.1} unit="%" onChange={set('rendementBrutAcquereur')} sub={`Valeur estimée : ${fmtK(fin.valRevente)}`}/>
+        </div>
+      </div>
+
+      {/* RIGHT */}
+      <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',gap:10}}>
+        {/* Budget d'acquisition (avec camembert) */}
+        <div style={{background:'#1a1a1e',border:'1px solid rgba(255,255,255,.07)',borderRadius:16,padding:'20px 20px'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+              <div style={{width:3,height:15,background:'#c9a227',borderRadius:2,flexShrink:0}}/>
+              <span style={{fontSize:12,fontWeight:600,color:'#9090b8'}}>Budget d'acquisition</span>
+            </div>
+            <span style={{fontSize:14,fontWeight:800,color:'#f0f0f5'}}>{fmtEur(fin.budget)}</span>
+          </div>
+          <DonutChart fin={fin} p={p}/>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginTop:18}}>
+            <MKpi label="Budget total" value={fmtEur(fin.budget)} color="#f0f0f5"/>
+            <MKpi label="Apport" value={fmtEur(p.apport)} sub={`${fin.budget>0?(p.apport/fin.budget*100).toFixed(0):0}%`} color="#22d3a0" border="rgba(34,211,160,.1)"/>
+            <MKpi label="Crédit bancaire" value={fmtEur(fin.credit)} sub={`LTV ${fin.budget>0?(fin.credit/fin.budget*100).toFixed(0):0}%`} color="#6366f1" border="rgba(99,102,241,.1)"/>
+            <MKpi label="Droits + frais" value={fmtEur(fin.droits+fin.fraisDivers)} color="#c9a227" border="rgba(201,162,39,.1)"/>
+          </div>
+        </div>
+
+        {/* Performance globale */}
+        <div style={{background:'#1a1a1e',border:'1px solid rgba(255,255,255,.07)',borderRadius:16,padding:'20px 20px'}}>
+          <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:16}}>
+            <div style={{width:3,height:15,background:'#c9a227',borderRadius:2,flexShrink:0}}/>
+            <span style={{fontSize:12,fontWeight:600,color:'#9090b8'}}>Performance globale</span>
+          </div>
+          <div style={{display:'flex',gap:10}}>
+            <MHero label="Multiple fonds propres" value={`×${multipleNet}`} sub={fmtEur(wealthCreated)+' de gain net'} color="#f0f0f5"/>
+            <MHero label="TRI" value={`${fin.tri}%`} sub={`sur ${p.anneeRevente} ans`} color={triC} border={triB}/>
+            <MHero label="Rendement global" value={`${fin.rendBrut}%`} sub="loyer brut / prix négocié" color="#f0f0f5"/>
+            <MHero label="Enrichissement / an" value={fmtEur(fin.enrichAn)} sub={`soit ${fmtEur(Math.round(fin.enrichAn/12))} / mois`} color={fin.enrichAn>=0?'#22d3a0':'#ef4444'} border={fin.enrichAn>=0?'rgba(34,211,160,.12)':'rgba(239,68,68,.1)'}/>
+          </div>
+        </div>
+
+        {/* Revenus locatifs */}
+        <AccSection title="Revenus locatifs prévisionnels" sub={`sur ${p.anneeRevente} ans`} isOpen={secs.revenus} onToggle={()=>tog('revenus')}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10}}>
+            <MKpi label="Loyer moyen net" value={fmtEur(loyerMoyenNet)} sub="annuel HC HT" color="#f0f0f5"/>
+            <MKpi label="Échéance crédit" value={`−${fmtEur(echeanceAnnuelle)}`} sub={`soit −${fmtEur(fin.echeanceMensuelle)} / mois`} color="#ef4444" border="rgba(239,68,68,.08)"/>
+            <MKpi label="Cash-flow moyen" value={`${cfMoyenAnnuel>=0?'+':''}${fmtEur(cfMoyenAnnuel)}`} sub={`soit ${fin.cfMoisMoyen>=0?'+':''}${fmtEur(fin.cfMoisMoyen)} / mois`} color={fin.cfMoisMoyen>=0?'#22d3a0':'#ef4444'} border={fin.cfMoisMoyen>=0?'rgba(34,211,160,.1)':'rgba(239,68,68,.08)'}/>
+          </div>
+        </AccSection>
+
+        {/* Synthèse revente */}
+        <AccSection title="Synthèse à la revente" sub={`année ${p.anneeRevente}`} badge={`×${multipleNet}`} isOpen={secs.revente} onToggle={()=>tog('revente')}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:14}}>
+            <MKpi label="Prix vente FAI" value={fmtEur(fin.valRevente)} color="#d0d0e8"/>
+            <MKpi label="Prix revente net" value={fmtEur(fin.prixNet)} color="#d0d0e8"/>
+            <MKpi label="Capital restant dû" value={fmtEur(fin.capRestantRevente)} color="#6060a0"/>
+            <MKpi label="Apport initial" value={fmtEur(p.apport)} color="#6060a0"/>
+            <MKpi label="Cash-flow cumulé" value={`${fin.totalCF>=0?'+':''}${fmtEur(fin.totalCF)}`} color="#c9a227" border="rgba(201,162,39,.1)"/>
+            <MKpi label="Création de richesse" value={fmtEur(wealthCreated)} sub={`×${multipleNet} l'apport`} color={wealthCreated>=0?'#22d3a0':'#ef4444'} border={wealthCreated>=0?'rgba(34,211,160,.12)':'rgba(239,68,68,.08)'}/>
+          </div>
+          {(()=>{
+            const segs=[{l:'Apport',v:p.apport,c:'#6366f1'},{l:'Cash-flow cumulé',v:Math.max(0,fin.totalCF),c:'#c9a227'},{l:'Produit de cession',v:Math.max(0,fin.produitNet),c:'#22d3a0'}].filter(s=>s.v>0);
+            const tot=segs.reduce((s,x)=>s+x.v,0);
+            return tot>0&&(
+              <div>
+                <div style={{display:'flex',height:5,borderRadius:99,overflow:'hidden',gap:1.5,background:'#0a0a12'}}>
+                  {segs.map((s,i)=><div key={i} style={{flex:s.v/tot,background:s.c,minWidth:2,transition:'flex .4s ease'}}/>)}
+                </div>
+                <div style={{display:'flex',gap:14,marginTop:9,flexWrap:'wrap'}}>
+                  {segs.map((s,i)=><div key={i} style={{display:'flex',alignItems:'center',gap:5,fontSize:10,color:'#50507a'}}><div style={{width:7,height:7,borderRadius:2,background:s.c,flexShrink:0}}/>{s.l} : {fmtK(s.v)}</div>)}
+                </div>
+              </div>
+            );
+          })()}
+        </AccSection>
+
+        {/* Chart Carousel */}
+        <ChartCarousel fin={fin} p={p}/>
+
+        {/* Detailed 25-year table */}
+        <DetailedTable fin={fin} p={p}/>
+      </div>
+    </div>
+  );
+};
+
+/* ── LANDING ── */
+const Landing=({onAnalyze,onDemo})=>{
+  const [docs,setDocs]=useState([]);const [extra,setExtra]=useState('');const [over,setOver]=useState(false);const [loading,setLoading]=useState(false);const [err,setErr]=useState('');
+  const inputRef=useRef();
+  const addFiles=files=>{const arr=Array.from(files).filter(f=>f.type==='application/pdf'||f.name.endsWith('.txt')||f.name.endsWith('.pdf'));setDocs(prev=>[...prev,...arr.map(f=>({file:f,type:'bail',id:Math.random(),warn:null}))]);};
+  const handleAnalyze=async()=>{
+    if(!docs.length&&!extra.trim()){setErr('Ajoutez au moins un document ou des informations.');return;}
+    setLoading(true);setErr('');
+    try{
+      const documents=[];const upd=[...docs];
+      for(let i=0;i<docs.length;i++){
+        const d=docs[i];let txt,warn=null;
+        if(d.file.name.endsWith('.txt')){txt=await readText(d.file);}
+        else{const r=await extractPDFText(d.file);txt=r.text;if(r.charCount<80){warn=r.charCount===0?`PDF scanné — aucun texte extrait. Collez le contenu manuellement.`:`Extraction partielle (${r.charCount} car.). PDF encodé de façon inhabituelle.`;txt=r.charCount>0?txt:`[PDF non extractible — ${r.pages} pages]`;}}
+        upd[i]={...d,warn};documents.push({type:d.type,filename:d.file.name,text:txt.slice(0,60000)});
+      }
+      setDocs(upd);onAnalyze({documents,additionalInfo:extra.trim()});
+    }catch(e){setErr(e.message);setLoading(false);}
+  };
+  return(
+    <div style={{minHeight:'calc(100vh - 54px)',display:'flex',flexDirection:'column',alignItems:'center',padding:'52px 24px 60px'}}>
+      <div className="anim-fade" style={{textAlign:'center',maxWidth:620,marginBottom:40}}>
+        <div style={{display:'inline-flex',alignItems:'center',gap:7,background:'rgba(201,162,39,.07)',border:'1px solid rgba(201,162,39,.15)',borderRadius:20,padding:'4px 12px',marginBottom:20,fontSize:10,color:'#b8922a',fontWeight:600}}>
+          <Ic n="zap" s={10} c="#c9a227"/>Analyse multi-documents · Simulateur financier interactif
+        </div>
+        <h1 style={{fontSize:'clamp(24px,3.5vw,42px)',fontWeight:900,color:'#f0f0f5',letterSpacing:'-1.5px',lineHeight:1.08,margin:'0 0 14px'}}>Analysez votre projet<br/><span style={{color:'#c9a227'}}>d'investissement en 60 secondes.</span></h1>
+        <p style={{fontSize:14,color:'#8080a8',lineHeight:1.75}}>Déposez vos documents — bail, PV d'AG, règlement de copro, quittances, diagnostics — et obtenez un <strong style={{color:'#b0b0c8',fontWeight:600}}>verdict analytique GO / NO-GO</strong> et une simulation financière interactive.</p>
+        <button onClick={onDemo} style={{marginTop:18,display:'inline-flex',alignItems:'center',gap:8,background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.1)',borderRadius:10,padding:'9px 18px',cursor:'pointer',fontSize:12,color:'#9090b8',fontFamily:'inherit',transition:'all .15s'}}
+          onMouseOver={e=>{e.currentTarget.style.background='rgba(255,255,255,.07)';e.currentTarget.style.color='#c8c8e0';}}
+          onMouseOut={e=>{e.currentTarget.style.background='rgba(255,255,255,.04)';e.currentTarget.style.color='#9090b8';}}>
+          <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><polygon points="5,3 19,12 5,21"/></svg>
+          Tester avec un exemple — bail commercial · local commercial Lyon
+        </button>
+      </div>
+      <div style={{width:'100%',maxWidth:660}}>
+        <div className={`drag-zone anim-d1${over?' over':''}`} style={{border:`1.5px dashed ${over?'#c9a227':'rgba(255,255,255,.12)'}`,borderRadius:14,padding:'30px 24px',textAlign:'center',cursor:'pointer',background:'#141418',marginBottom:12}} onDragOver={e=>{e.preventDefault();setOver(true)}} onDragLeave={()=>setOver(false)} onDrop={e=>{e.preventDefault();setOver(false);addFiles(e.dataTransfer.files);}} onClick={()=>inputRef.current?.click()}>
+          <input ref={inputRef} type="file" accept=".pdf,.txt" multiple style={{display:'none'}} onChange={e=>addFiles(e.target.files)}/>
+          <div style={{width:42,height:42,borderRadius:11,background:'rgba(201,162,39,.08)',border:'1px solid rgba(201,162,39,.18)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 12px'}}><Ic n="upload" s={19} c="#c9a227"/></div>
+          <p style={{color:'#c8c8e0',fontSize:13,fontWeight:600,margin:'0 0 4px'}}>Glissez vos documents ici</p>
+          <p style={{color:'#606080',fontSize:11,margin:'0 0 10px'}}>PDF natifs ou .txt · Plusieurs fichiers acceptés</p>
+          <div style={{display:'flex',gap:5,justifyContent:'center',flexWrap:'wrap'}}>
+            {['Bail commercial',"PV d'AG",'Règlt copro','Quittances','Diagnostics'].map(l=><span key={l} style={{background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.07)',borderRadius:5,padding:'2px 8px',fontSize:9.5,color:'#606080'}}>{l}</span>)}
+          </div>
+        </div>
+        {docs.length>0&&<div className="anim-fade" style={{marginBottom:12,display:'flex',flexDirection:'column',gap:5}}>
+          {docs.map(d=>(
+            <div key={d.id}>
+              <div className="doc-card" style={{background:'#141418',border:`1px solid ${d.warn?'rgba(245,158,11,.22)':'rgba(255,255,255,.07)'}`,borderRadius:d.warn?'9px 9px 0 0':9,padding:'10px 13px',display:'flex',alignItems:'center',gap:10}}>
+                <div style={{width:28,height:28,borderRadius:7,background:'rgba(201,162,39,.07)',border:'1px solid rgba(201,162,39,.14)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><Ic n={d.warn?'alert':'doc'} s={12} c={d.warn?'#f59e0b':'#c9a227'}/></div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:12,fontWeight:500,color:'#c8c8e0',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',marginBottom:4}}>{d.file.name}</div>
+                  <select value={d.type} onChange={e=>setDocs(ds=>ds.map(x=>x.id===d.id?{...x,type:e.target.value}:x))}>{DOC_TYPES.map(t=><option key={t.value} value={t.value}>{t.label}</option>)}</select>
+                </div>
+                <button onClick={()=>setDocs(ds=>ds.filter(x=>x.id!==d.id))} style={{background:'none',border:'none',cursor:'pointer',padding:4,opacity:.4}} onMouseOver={e=>e.currentTarget.style.opacity='1'} onMouseOut={e=>e.currentTarget.style.opacity='.4'}><Ic n="x" s={13} c="#7070a0"/></button>
+              </div>
+              {d.warn&&<div style={{background:'rgba(245,158,11,.04)',border:'1px solid rgba(245,158,11,.18)',borderTop:'none',borderRadius:'0 0 7px 7px',padding:'6px 12px',fontSize:10,color:'#b8892a'}}>⚠ {d.warn}</div>}
+            </div>
+          ))}
+          <button className="btn-g anim-fade" onClick={()=>inputRef.current?.click()} style={{display:'flex',alignItems:'center',justifyContent:'center',gap:6,borderRadius:8,padding:'8px',fontSize:11,color:'#7070a0'}}><Ic n="plus" s={11} c="#404060"/>Ajouter d'autres documents</button>
+        </div>}
+        <div className="anim-d2" style={{marginBottom:16}}>
+          <div style={{fontSize:11,color:'#8080a8',fontWeight:500,marginBottom:7}}>Informations complémentaires <span style={{color:'#50506a'}}>(optionnel)</span></div>
+          <textarea rows={4} value={extra} onChange={e=>setExtra(e.target.value)} placeholder={`Prix d'acquisition envisagé : 850 000 €\nLoyer mensuel : 5 200 €\nVille : Lyon 6ème\nRemarques : local en rez-de-chaussée...`}/>
+        </div>
+        {err&&<div style={{marginBottom:12,padding:'10px 13px',background:'rgba(239,68,68,.05)',border:'1px solid rgba(239,68,68,.18)',borderRadius:8,fontSize:12,color:'#ef4444'}}>{err}</div>}
+        <button className="btn-p anim-d3" onClick={handleAnalyze} disabled={loading||(docs.length===0&&!extra.trim())} style={{width:'100%',borderRadius:11,padding:'14px',fontSize:14,fontWeight:700,color:'#111114',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+          {loading?<><div className="spin" style={{width:15,height:15,border:'2px solid rgba(0,0,0,.2)',borderTopColor:'#111',borderRadius:'50%'}}/>Lecture des documents...</>:<><Ic n="zap" s={14} c="#111114"/>Analyser le projet — GO / NO-GO</>}
+        </button>
+        <div className="anim-d3" style={{marginTop:18,display:'flex',gap:16,justifyContent:'center',flexWrap:'wrap'}}>
+          {[{n:'lock',t:'Données non conservées'},{n:'shield',t:'Traitement local'},{n:'euro',t:'~0.05€ / analyse'}].map((x,i)=><div key={i} style={{display:'flex',alignItems:'center',gap:5,fontSize:10,color:'#40405a'}}><Ic n={x.n} s={10} c="#383858"/>{x.t}</div>)}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ── LOADING ── */
+const Loading=({payload,onComplete,onError})=>{
+  const [idx,setIdx]=useState(0);const [done,setDone]=useState([]);const [pct,setPct]=useState(0);
+  useEffect(()=>{
+    const run=async()=>{
+      try{
+        setIdx(0);setPct(8);await new Promise(r=>setTimeout(r,600));
+        setDone([0]);setIdx(1);setPct(25);await new Promise(r=>setTimeout(r,500));
+        setDone([0,1]);setIdx(2);setPct(45);
+        const data=await callAPI(payload);
+        setDone([0,1,2]);setIdx(3);setPct(75);await new Promise(r=>setTimeout(r,400));
+        setDone([0,1,2,3]);setIdx(4);setPct(95);await new Promise(r=>setTimeout(r,500));
+        setPct(100);setDone([0,1,2,3,4]);setTimeout(()=>onComplete(data),400);
+      }catch(e){onError(e.message);}
+    };run();
+  },[]);
+  return(
+    <div style={{minHeight:'calc(100vh - 54px)',display:'flex',alignItems:'center',justifyContent:'center',padding:40}}>
+      <div className="anim-fade" style={{width:'100%',maxWidth:440}}>
+        <div style={{background:'#1a1a1e',border:'1px solid rgba(255,255,255,.07)',borderRadius:14,padding:'18px 20px',marginBottom:20,display:'flex',alignItems:'center',gap:14}}>
+          <div style={{width:36,height:36,borderRadius:10,background:'rgba(201,162,39,.08)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><Ic n="bldg" s={16} c="#c9a227"/></div>
+          <div style={{flex:1}}><div style={{color:'#d0d0e8',fontSize:13,fontWeight:600,marginBottom:2}}>Analyse en cours...</div><div style={{color:'#60607a',fontSize:11}}>{payload.documents.length} document{payload.documents.length>1?'s':''} · Claude Sonnet</div></div>
+          <div className="spin"><Ic n="ref" s={14} c="#c9a227"/></div>
+        </div>
+        <div style={{marginBottom:20}}>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:7}}><span style={{fontSize:11,color:'#60607a'}}>Progression</span><span style={{fontSize:11,color:'#c9a227',fontWeight:700}}>{pct}%</span></div>
+          <div style={{background:'#1a1a20',borderRadius:99,height:3,overflow:'hidden'}}><div style={{height:'100%',borderRadius:99,width:`${pct}%`,background:'#c9a227',transition:'width .3s ease'}}/></div>
+        </div>
+        {STEPS.map((label,i)=>{const isDone=done.includes(i),isActive=idx===i&&!isDone;return(
+          <div key={i} style={{display:'flex',alignItems:'center',gap:11,padding:'9px 0',borderBottom:i<4?'1px solid rgba(255,255,255,.04)':'none'}}>
+            <div style={{width:18,height:18,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,background:isDone?'rgba(201,162,39,.1)':isActive?'rgba(201,162,39,.05)':'transparent',border:`1px solid ${isDone?'rgba(201,162,39,.3)':isActive?'rgba(201,162,39,.2)':'rgba(255,255,255,.06)'}`}}>
+              {isDone?<Ic n="check" s={9} c="#c9a227"/>:isActive?<div className="pulse-dot" style={{width:4,height:4,borderRadius:'50%',background:'#c9a227'}}/>:<div style={{width:3,height:3,borderRadius:'50%',background:'#2a2a32'}}/>}
+            </div>
+            <span style={{fontSize:12,color:isDone?'#c9a227':isActive?'#b0b0c8':'#2a2a40',fontWeight:isActive?500:400}}>{label}</span>
+          </div>
+        );})}
+      </div>
+    </div>
+  );
+};
+
+/* ── VERDICT ── */
+const VerdictScreen=({data,onReset})=>{
+  const [tab,setTab]=useState('verdict');
+  const vRaw=data.verdict||'';const v=vRaw.replace('-','_').toUpperCase();
+  const sCfg={
+    GO:{color:'#22d3a0',bg:'rgba(34,211,160,.08)',border:'rgba(34,211,160,.2)',dot:'#22d3a0'},
+    ATTENTION:{color:'#c9a227',bg:'rgba(201,162,39,.08)',border:'rgba(201,162,39,.2)',dot:'#c9a227'},
+    NO_GO:{color:'#ef4444',bg:'rgba(239,68,68,.08)',border:'rgba(239,68,68,.2)',dot:'#ef4444'},
+  }[v]||{color:'#7070a0',bg:'rgba(255,255,255,.04)',border:'rgba(255,255,255,.1)',dot:'#7070a0'};
+  const sLabel={GO:'Conforme',ATTENTION:'À vérifier',NO_GO:'Non conforme'}[v]||'—';
+  const stCfg={
+    ok:{icon:'check',color:'#22d3a0',bg:'rgba(34,211,160,.05)',border:'rgba(34,211,160,.14)',label:'Conforme'},
+    ko:{icon:'x',color:'#ef4444',bg:'rgba(239,68,68,.05)',border:'rgba(239,68,68,.14)',label:'Non conforme'},
+    attention:{icon:'alert',color:'#c9a227',bg:'rgba(201,162,39,.05)',border:'rgba(201,162,39,.14)',label:'À vérifier'},
+    inconnu:{icon:'question',color:'#50507a',bg:'rgba(255,255,255,.02)',border:'rgba(255,255,255,.06)',label:'Inconnu'},
+  };
+  const r=data.rentabilite||{};const criteres=data.criteres||[];const risques=data.risques||[];const positifs=data.points_positifs||[];const manquants=data.documents_manquants||[];
+  const tabStyle=k=>({borderRadius:8,padding:'7px 16px',fontSize:12,fontWeight:600,color:tab===k?'#f0f0f5':'#505070',background:tab===k?'rgba(255,255,255,.06)':'transparent',border:tab===k?'1px solid rgba(255,255,255,.09)':'1px solid transparent'});
+  return(
+    <div style={{minHeight:'calc(100vh - 54px)',padding:'22px 26px 60px'}}>
+      <div style={{maxWidth:1400,margin:'0 auto'}}>
+        <div className="anim-fade" style={{display:'flex',gap:2,marginBottom:16,background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.06)',borderRadius:10,padding:3,width:'fit-content'}}>
+          <button className="tab-btn" style={tabStyle('verdict')} onClick={()=>setTab('verdict')}>Rapport d'analyse</button>
+          <button className="tab-btn" style={tabStyle('simulateur')} onClick={()=>setTab('simulateur')}>Simulateur financier</button>
+        </div>
+        {tab==='verdict'&&(
+          <div className="anim-fade">
+            <div style={{background:'#1a1a1e',border:'1px solid rgba(255,255,255,.07)',borderRadius:16,padding:'22px 26px',marginBottom:16}}>
+              <div style={{display:'flex',alignItems:'flex-start',gap:20}}>
+                <div style={{flex:1}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14,flexWrap:'wrap'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:6,background:sCfg.bg,border:`1px solid ${sCfg.border}`,borderRadius:7,padding:'4px 10px'}}>
+                      <div style={{width:6,height:6,borderRadius:'50%',background:sCfg.dot}}/>
+                      <span style={{fontSize:11,fontWeight:700,color:sCfg.color}}>{sLabel}</span>
+                    </div>
+                    {r.taux&&<div style={{display:'flex',alignItems:'center',gap:6,background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.07)',borderRadius:7,padding:'4px 10px'}}><span style={{fontSize:10,color:'#60607a'}}>Rentabilité</span><span style={{fontSize:12,fontWeight:700,color:r.conforme?'#22d3a0':'#ef4444'}}>{r.taux}%</span><span style={{fontSize:10,color:'#40405a'}}>/ seuil {r.seuilRequis}%</span></div>}
+                    {r.loyerAnnuel&&<div style={{display:'flex',alignItems:'center',gap:6,background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.07)',borderRadius:7,padding:'4px 10px'}}><span style={{fontSize:10,color:'#60607a'}}>Loyer</span><span style={{fontSize:12,fontWeight:700,color:'#c8c8e0'}}>{r.loyerAnnuel}</span></div>}
+                    {r.prixAcquisition&&<div style={{display:'flex',alignItems:'center',gap:6,background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.07)',borderRadius:7,padding:'4px 10px'}}><span style={{fontSize:10,color:'#60607a'}}>Prix</span><span style={{fontSize:12,fontWeight:700,color:'#c8c8e0'}}>{r.prixAcquisition}</span></div>}
+                  </div>
+                  <p style={{fontSize:13,color:'#a0a0b8',lineHeight:1.7,margin:0,maxWidth:820}}>{data.synthese||'—'}</p>
+                </div>
+                <button className="btn-g" onClick={onReset} style={{borderRadius:9,padding:'7px 14px',fontSize:12,color:'#70709a',display:'flex',alignItems:'center',gap:6,flexShrink:0}}><Ic n="back" s={11} c="#50507a"/>Nouveau</button>
+              </div>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+              <div className="anim-d1">
+                <div style={{fontSize:10,color:'#50508a',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.8px',marginBottom:10,display:'flex',alignItems:'center',gap:7}}><div style={{width:3,height:14,background:'#c9a227',borderRadius:2}}/>Critères d'investissement</div>
+                <div style={{display:'flex',flexDirection:'column',gap:7}}>
+                  {criteres.map((c,i)=>{const sc=stCfg[c.statut]||stCfg.inconnu;return(
+                    <div key={i} style={{background:sc.bg,border:`1px solid ${sc.border}`,borderRadius:12,padding:'13px 15px'}}>
+                      <div style={{display:'flex',alignItems:'flex-start',gap:9}}>
+                        <div style={{width:20,height:20,borderRadius:6,background:sc.bg,border:`1px solid ${sc.border}`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginTop:1}}><Ic n={sc.icon} s={10} c={sc.color}/></div>
+                        <div style={{flex:1}}>
+                          <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}><span style={{fontSize:12,fontWeight:600,color:'#d8d8f0'}}>{c.label}</span>{c.bloquant&&c.statut==='ko'&&<span style={{fontSize:9,color:'#ef4444',background:'rgba(239,68,68,.08)',border:'1px solid rgba(239,68,68,.2)',borderRadius:4,padding:'1px 5px',fontWeight:700}}>BLOQUANT</span>}<span style={{fontSize:10,color:sc.color,marginLeft:'auto',fontWeight:600}}>{sc.label}</span></div>
+                          <p style={{fontSize:11,color:'#8080a8',margin:0,lineHeight:1.6}}>{c.detail}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );})}
+                </div>
+              </div>
+              <div className="anim-d2" style={{display:'flex',flexDirection:'column',gap:10}}>
+                {r.taux&&(
+                  <div style={{background:'#1a1a1e',border:'1px solid rgba(255,255,255,.07)',borderRadius:14,padding:'16px 18px'}}>
+                    <div style={{fontSize:10,color:'#50508a',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.8px',marginBottom:10,display:'flex',alignItems:'center',gap:7}}><div style={{width:3,height:14,background:'#c9a227',borderRadius:2}}/>Rentabilité</div>
+                    {[['Taux calculé',`${r.taux}%`,r.conforme?'#22d3a0':'#ef4444'],['Seuil requis',`${r.seuilRequis}%`,'#c9a227'],['Loyer annuel',r.loyerAnnuel,'#c8c8e0'],["Prix d'acquisition",r.prixAcquisition,'#c8c8e0']].filter(x=>x[1]).map(([k,val,col],i,arr)=>(
+                      <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'7px 0',borderBottom:i<arr.length-1?'1px solid rgba(255,255,255,.04)':'none'}}><span style={{fontSize:11,color:'#70709a'}}>{k}</span><span style={{fontSize:12,fontWeight:600,color:col}}>{val}</span></div>
+                    ))}
+                    {r.detail&&<p style={{fontSize:11,color:'#8080a8',lineHeight:1.6,margin:'10px 0 0'}}>{r.detail}</p>}
+                  </div>
+                )}
+                {risques.length>0&&(
+                  <div style={{background:'#1a1a1e',border:'1px solid rgba(255,255,255,.07)',borderRadius:14,padding:'14px 16px'}}>
+                    <div style={{fontSize:10,color:'#50508a',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.8px',marginBottom:9,display:'flex',alignItems:'center',gap:7}}><div style={{width:3,height:14,background:'#ef4444',borderRadius:2}}/>Risques</div>
+                    {risques.map((r,i)=><div key={i} style={{display:'flex',alignItems:'flex-start',gap:8,marginBottom:i<risques.length-1?8:0}}><Ic n="alert" s={11} c="#ef4444"/><span style={{fontSize:11,color:'#9090b0',lineHeight:1.55}}>{r}</span></div>)}
+                  </div>
+                )}
+                {positifs.length>0&&(
+                  <div style={{background:'#1a1a1e',border:'1px solid rgba(255,255,255,.07)',borderRadius:14,padding:'14px 16px'}}>
+                    <div style={{fontSize:10,color:'#50508a',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.8px',marginBottom:9,display:'flex',alignItems:'center',gap:7}}><div style={{width:3,height:14,background:'#22d3a0',borderRadius:2}}/>Points positifs</div>
+                    {positifs.map((p,i)=><div key={i} style={{display:'flex',alignItems:'flex-start',gap:8,marginBottom:i<positifs.length-1?8:0}}><Ic n="check" s={11} c="#22d3a0"/><span style={{fontSize:11,color:'#9090b0',lineHeight:1.55}}>{p}</span></div>)}
+                  </div>
+                )}
+                {manquants.length>0&&(
+                  <div style={{background:'#1a1a1e',border:'1px solid rgba(255,255,255,.07)',borderRadius:14,padding:'14px 16px'}}>
+                    <div style={{fontSize:10,color:'#50508a',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.8px',marginBottom:9,display:'flex',alignItems:'center',gap:7}}><div style={{width:3,height:14,background:'#c9a227',borderRadius:2}}/>Documents manquants</div>
+                    {manquants.map((m,i)=><div key={i} style={{display:'flex',alignItems:'flex-start',gap:8,marginBottom:i<manquants.length-1?7:0}}><Ic n="info" s={11} c="#c9a227"/><span style={{fontSize:11,color:'#9090b0',lineHeight:1.55}}>{m}</span></div>)}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        {tab==='simulateur'&&<div className="anim-fade"><FinancialSimulator prefill={data.rentabilite}/></div>}
+      </div>
+    </div>
+  );
+};
+
+/* ── ERROR ── */
+const ErrorScreen=({message,onBack})=>(
+  <div style={{minHeight:'calc(100vh - 54px)',display:'flex',alignItems:'center',justifyContent:'center',padding:40}}>
+    <div className="anim-fade" style={{maxWidth:400,textAlign:'center'}}>
+      <div style={{width:46,height:46,borderRadius:12,background:'rgba(239,68,68,.08)',border:'1px solid rgba(239,68,68,.18)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 14px'}}><Ic n="alert" s={19} c="#ef4444"/></div>
+      <h2 style={{color:'#e0e0f0',fontSize:16,fontWeight:700,margin:'0 0 8px'}}>Erreur d'analyse</h2>
+      <p style={{color:'#70709a',fontSize:13,lineHeight:1.65,margin:'0 0 20px'}}>{message}</p>
+      <button className="btn-p" onClick={onBack} style={{borderRadius:10,padding:'10px 20px',fontSize:13,fontWeight:700,color:'#111114'}}>Réessayer</button>
+    </div>
+  </div>
+);
+
+/* ── HEADER ── */
+const Header=({onReset,showBack})=>(
+  <header style={{borderBottom:'1px solid rgba(255,255,255,.06)',background:'rgba(17,17,20,.96)',backdropFilter:'blur(20px)',position:'sticky',top:0,zIndex:100}}>
+    <div style={{maxWidth:1400,margin:'0 auto',padding:'0 26px',height:52,display:'flex',alignItems:'center',gap:10}}>
+      {showBack&&<button className="btn-g" onClick={onReset} style={{borderRadius:8,padding:'5px 12px',color:'#80809a',fontSize:12,display:'flex',alignItems:'center',gap:5}}><Ic n="back" s={11} c="#60607a"/>Nouveau projet</button>}
+      <div style={{display:'flex',alignItems:'center',gap:8}}>
+        <div style={{width:25,height:25,borderRadius:7,background:'#c9a227',display:'flex',alignItems:'center',justifyContent:'center'}}><Ic n="bldg" s={12} c="#111114"/></div>
+        <span style={{color:'#f0f0f5',fontWeight:800,fontSize:14,letterSpacing:'-0.4px'}}>Bail Bye</span>
+      </div>
+      <div style={{background:'rgba(201,162,39,.07)',border:'1px solid rgba(201,162,39,.16)',borderRadius:20,padding:'2px 9px',fontSize:9.5,color:'#b08a28',fontWeight:600}}>Analyse GO/NO-GO · Simulateur financier</div>
+    </div>
+  </header>
+);
+
+/* ── APP ── */
+const App=()=>{
+  const [screen,setScreen]=useState('idle');const [payload,setPayload]=useState(null);const [result,setResult]=useState(null);const [error,setError]=useState('');
+  const reset=()=>{setScreen('idle');setPayload(null);setResult(null);setError('');};
+  return(
+    <div style={{minHeight:'100vh',background:'#111114'}}>
+      <Header onReset={reset} showBack={screen!=='idle'}/>
+      {screen==='idle'&&<Landing onAnalyze={p=>{setPayload(p);setScreen('loading');}} onDemo={()=>{setResult(DEMO_DATA);setScreen('verdict');}}/>}
+      {screen==='loading'&&<Loading payload={payload} onComplete={d=>{setResult(d);setScreen('verdict');}} onError={m=>{setError(m);setScreen('error');}}/>}
+      {screen==='verdict'&&<VerdictScreen data={result} onReset={reset}/>}
+      {screen==='error'&&<ErrorScreen message={error} onBack={reset}/>}
+    </div>
+  );
+};
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
