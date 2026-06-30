@@ -166,6 +166,15 @@ def extract_and_fix_json(text):
         raise ValueError(f'JSON invalide : {e}')
 
 class Handler(SimpleHTTPRequestHandler):
+    def do_GET(self):
+        path = self.path.split('?')[0]
+        if path == '/':
+            self.path = '/bail-bye.html'
+        elif any(part.startswith('.') for part in path.split('/') if part):
+            self.send_error(404, 'Not found')
+            return
+        super().do_GET()
+
     def do_OPTIONS(self):
         self.send_response(200)
         self._cors()
