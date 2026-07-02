@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bail Bye — Analyse d'investissement</title>
+<title>Doc AInalyzer — Analyse d'investissement</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -178,7 +178,7 @@ const computeFinancials=p=>{
     vacanceLocative=0,surface=0,
     commissionAgentActive=true,commissionAgentType='pct',tauxCommissionAgent=5,commissionAgentInclusFAI=true,
     tauxDroitsEnregistrement=8,
-    feesBailByeType='pct',tauxFeesBailBye=8,tauxIncentiveBailBye=20,
+    feesBailByeType='pct',tauxFeesBailBye=0,tauxIncentiveBailBye=0,
     revalorisationActive=false,loyerRevalorise=0,anneeRevalorisation=0,
     renegociationActive=false,anneeRenegociation=0,nouveauTauxRenegociation=0,moisIRA=6}=p;
 
@@ -790,7 +790,7 @@ const FinancialSimulator=({prefill})=>{
     tauxInteret:3.5,tauxAssuranceCredit:0.25,pretInFine:false,vacanceLocative:0,
     commissionAgentActive:true,commissionAgentType:'pct',tauxCommissionAgent:5.0,commissionAgentInclusFAI:true,
     tauxDroitsEnregistrement:8.0,
-    feesBailByeType:'pct',tauxFeesBailBye:8.0,tauxIncentiveBailBye:20.0,
+    feesBailByeType:'pct',tauxFeesBailBye:0,tauxIncentiveBailBye:0,
     revalorisationActive:false,loyerRevalorise:Math.round(iL*12*1.1),anneeRevalorisation:5,
     renegociationActive:false,anneeRenegociation:5,nouveauTauxRenegociation:2.5,moisIRA:6,
     fraisCreationSociete:1500,fraisDossierBancaire:500,fraisCourtage:1500,
@@ -821,7 +821,7 @@ const FinancialSimulator=({prefill})=>{
           <SliderRow label="Surface" value={p.surface} min={10} max={500} step={1} unit="m²" onChange={set('surface')}/>
           <SliderRow label="Loyer mensuel HC HT" value={p.loyerMensuel} min={300} max={20000} step={100} unit="€" onChange={set('loyerMensuel')} sub={`${fmtEur(p.loyerMensuel*12)} / an · Rdt ${fin.rendBrut}% · ${fmtEur(fin.loyerParM2)}/m²`}/>
           <SliderRow label="Prix bien FAI" value={p.prixBien} min={50000} max={5000000} step={5000} unit="€" onChange={set('prixBien')}/>
-          <SliderRow label="Prix négocié FAI" value={p.prixNegocie} min={50000} max={p.prixBien} step={5000} unit="€" onChange={set('prixNegocie')} sub={`Prime négo (${p.tauxIncentiveBailBye}%) : ${fmtEur(fin.primeNego)}`}/>
+          <SliderRow label="Prix négocié FAI" value={p.prixNegocie} min={50000} max={p.prixBien} step={5000} unit="€" onChange={set('prixNegocie')}/>
           <TogRow label="Revalorisation loyer" value={p.revalorisationActive} onChange={set('revalorisationActive')} sub="Saut ponctuel du loyer à une année donnée"/>
           {p.revalorisationActive&&<>
             <SliderRow label="Nouveau loyer / an" value={p.loyerRevalorise} min={0} max={200000} step={1000} unit="€" onChange={set('loyerRevalorise')}/>
@@ -836,11 +836,6 @@ const FinancialSimulator=({prefill})=>{
             <TogRow label="Inclus dans le prix FAI" value={p.commissionAgentInclusFAI} onChange={set('commissionAgentInclusFAI')} sub={p.commissionAgentInclusFAI?'Déjà compris dans le prix négocié':'Vient en plus du prix négocié'}/>
           </>}
           <SliderRow label="Droits d'enregistrement" value={p.tauxDroitsEnregistrement} min={0} max={10} step={0.1} unit="%" onChange={set('tauxDroitsEnregistrement')} sub={`soit ${fmtEur(fin.droits)}`}/>
-          <TogRow label="Honoraires Bail Bye fixes" value={p.feesBailByeType==='fixe'} onChange={v=>set('feesBailByeType')(v?'fixe':'pct')}/>
-          {p.feesBailByeType==='fixe'
-            ?<SliderRow label="Honoraires Bail Bye" value={p.tauxFeesBailBye} min={0} max={100000} step={500} unit="€" onChange={set('tauxFeesBailBye')}/>
-            :<SliderRow label="Honoraires Bail Bye" value={p.tauxFeesBailBye} min={0} max={15} step={0.5} unit="%" onChange={set('tauxFeesBailBye')} sub={`soit ${fmtEur(fin.feesBailBye)}`}/>}
-          <SliderRow label="Prime négo Bail Bye" value={p.tauxIncentiveBailBye} min={0} max={50} step={1} unit="%" onChange={set('tauxIncentiveBailBye')} sub={`soit ${fmtEur(fin.primeNego)}`}/>
         </div>
         <div style={{marginBottom:18}}>
           <SecHdr label="Financement"/>
@@ -898,12 +893,11 @@ const FinancialSimulator=({prefill})=>{
             <span style={{fontSize:14,fontWeight:800,color:'#ffffff'}}>{fmtEur(fin.budget)}</span>
           </div>
           <DonutChart fin={fin} p={p}/>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:10,marginTop:18}}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginTop:18}}>
             <MKpi label="Budget total" value={fmtEur(fin.budget)} color="#ffffff"/>
             <MKpi label="Apport" value={fmtEur(p.apport)} sub={`${fin.budget>0?(p.apport/fin.budget*100).toFixed(0):0}%`} color="#22d3a0" border="rgba(34,211,160,.1)"/>
             <MKpi label="Crédit bancaire" value={fmtEur(fin.credit)} sub={`LTV ${fin.budget>0?(fin.credit/fin.budget*100).toFixed(0):0}%`} color="#5a5af0" border="rgba(99,102,241,.1)"/>
             <MKpi label="Droits + frais" value={fmtEur(fin.droits+fin.fraisDivers)} color="#c9a227" border="rgba(201,162,39,.1)"/>
-            <MKpi label="Revenu Bail Bye" value={fmtEur(fin.honorairesBailByeMontant)} sub={`Hon. ${fmtEur(fin.feesBailBye)} + Prime négo ${fmtEur(fin.primeNego)}`} color="#f472b6" border="rgba(244,114,182,.1)"/>
           </div>
         </div>
 
@@ -1265,7 +1259,7 @@ const Header=({onReset,showBack})=>(
   <header style={{borderBottom:'1px solid rgba(255,255,255,.06)',background:'rgba(17,17,20,.96)',backdropFilter:'blur(20px)',position:'sticky',top:0,zIndex:100}}>
     <div style={{maxWidth:1400,margin:'0 auto',padding:'0 26px',height:52,display:'flex',alignItems:'center',gap:10}}>
       {showBack&&<button className="btn-g" onClick={onReset} style={{borderRadius:8,padding:'5px 12px',color:'#888888',fontSize:12,display:'flex',alignItems:'center',gap:5}}><Ic n="back" s={11} c="#606060"/>Nouveau projet</button>}
-      <a href="doc-ainalyzer.html" style={{color:'#ffffff',fontWeight:800,fontSize:14,letterSpacing:'-0.4px',textDecoration:'none'}}>Bail Bye</a>
+      <span style={{color:'#ffffff',fontWeight:800,fontSize:14,letterSpacing:'-0.4px'}}>Doc AInalyzer</span>
     </div>
   </header>
 );
