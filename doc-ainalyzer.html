@@ -784,7 +784,7 @@ const FinancialSimulator=({prefill})=>{
   const iP=prefill?.prixAcquisition?Math.max(50000,parseAmt(prefill.prixAcquisition)):200000;
   const [p,setP]=useState({
     surface:100,
-    loyerMensuel:iL,prixBien:iP,prixNegocie:Math.round(iP*0.98),
+    loyerMensuel:iL,prixBien:iP,prixNegocie:prefill?.prixAcquisition?iP:Math.round(iP*0.98),
     dureeCredit:20,apport:Math.round(iP*0.17),indexation:2.0,
     tva:false,tauxTVA:20.0,chargesCopro:1200,chargesCoproRefact:false,taxeFonciere:1800,taxeFonciereRefact:false,
     tauxInteret:3.5,tauxAssuranceCredit:0.25,pretInFine:false,vacanceLocative:0,
@@ -1103,6 +1103,61 @@ const VERDICT_RULES=[
   ['ATTENTION','Un point d\'attention non bloquant, ou informations insuffisantes sur un critère bloquant.'],
   ['NO_GO','Au moins un critère bloquant est non conforme.'],
 ];
+
+/* ── OBJECTIFS (ce qu'il faut pour atteindre le seuil) ── */
+const ObjectifsPanel=({r,criteres,stCfg})=>{
+  const loyer=parseAmt(r.loyerAnnuel),prixActuel=parseAmt(r.prixAcquisition),seuil=parseFloat(r.seuilRequis)||0;
+  const [prixTest,setPrixTest]=useState(prixActuel||100000);
+  const hasData=loyer>0&&prixActuel>0&&seuil>0;
+  const prixMax=hasData?Math.round(loyer/(seuil/100)):0;
+  const ecart=prixActuel-prixMax;
+  const loyerMin=hasData?Math.round(prixActuel*seuil/100):0;
+  const tauxTest=prixTest>0?(loyer/prixTest*100):0;
+  const conformeTest=seuil>0?tauxTest>=seuil:false;
+  const aResoudre=criteres.filter(c=>c.statut!=='ok');
+  return(
+    <div className="anim-fade" style={{display:'flex',flexDirection:'column',gap:14}}>
+      {hasData?(
+        <div style={{background:'#1b1b1b',border:'1px solid rgba(255,255,255,.07)',borderRadius:16,padding:'20px 22px'}}>
+          <div style={{fontSize:10,color:'#888888',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.8px',marginBottom:14,display:'flex',alignItems:'center',gap:7}}><div style={{width:3,height:14,background:'#c9a227',borderRadius:2}}/>Rentabilité — ce qu'il faut pour être conforme</div>
+          <p style={{fontSize:12,color:'#e0e0e0',lineHeight:1.7,margin:'0 0 16px'}}>
+            {ecart>0
+              ?<>Au loyer actuel de <strong style={{color:'#fff'}}>{fmtEur(loyer)}</strong>/an, il faut négocier le prix à <strong style={{color:'#22d3a0'}}>{fmtEur(prixMax)}</strong> maximum (soit <strong style={{color:'#ef4444'}}>−{fmtEur(ecart)}</strong>, −{(ecart/prixActuel*100).toFixed(1)}%) pour atteindre le seuil de rentabilité requis de {seuil}%.</>
+              :<>Le prix actuel ({fmtEur(prixActuel)}) est déjà conforme au seuil de {seuil}% — marge de <strong style={{color:'#22d3a0'}}>{fmtEur(-ecart)}</strong> avant de repasser sous le seuil.</>}
+          </p>
+          <p style={{fontSize:11,color:'#999999',lineHeight:1.6,margin:'0 0 18px'}}>Alternative à prix constant : il faudrait un loyer annuel d'au moins <strong style={{color:'#e0e0e0'}}>{fmtEur(loyerMin)}</strong> {loyer<loyerMin?`(soit +${fmtEur(loyerMin-loyer)})`:'— déjà atteint'}.</p>
+          <div style={{background:'#121212',border:'1px solid rgba(255,255,255,.06)',borderRadius:12,padding:'16px 18px'}}>
+            <SliderRow label="Prix négocié à tester" value={prixTest} min={Math.max(10000,Math.round(prixMax*0.7))} max={Math.round(prixActuel*1.15)} step={1000} unit="€" onChange={setPrixTest}/>
+            <div style={{display:'flex',alignItems:'center',gap:10,marginTop:6}}>
+              <span style={{fontSize:11,color:'#999999'}}>Rentabilité résultante :</span>
+              <span style={{fontSize:14,fontWeight:800,color:conformeTest?'#22d3a0':'#ef4444'}}>{tauxTest.toFixed(2)}%</span>
+              <span style={{fontSize:10,color:conformeTest?'#22d3a0':'#ef4444',background:conformeTest?'rgba(34,211,160,.1)':'rgba(239,68,68,.1)',border:`1px solid ${conformeTest?'rgba(34,211,160,.25)':'rgba(239,68,68,.25)'}`,borderRadius:5,padding:'2px 8px',fontWeight:700}}>{conformeTest?'Conforme':'Non conforme'}</span>
+            </div>
+          </div>
+        </div>
+      ):(
+        <div style={{background:'#1b1b1b',border:'1px solid rgba(255,255,255,.07)',borderRadius:16,padding:'20px 22px'}}>
+          <p style={{fontSize:12,color:'#999999',margin:0}}>Loyer, prix d'acquisition ou seuil requis manquants dans l'analyse — impossible de calculer un objectif de négociation.</p>
+        </div>
+      )}
+      <div style={{background:'#1b1b1b',border:'1px solid rgba(255,255,255,.07)',borderRadius:16,padding:'20px 22px'}}>
+        <div style={{fontSize:10,color:'#888888',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.8px',marginBottom:14,display:'flex',alignItems:'center',gap:7}}><div style={{width:3,height:14,background:'#c9a227',borderRadius:2}}/>Autres points à lever avant GO</div>
+        {aResoudre.length===0?(
+          <p style={{fontSize:12,color:'#22d3a0',margin:0}}>Tous les autres critères sont conformes.</p>
+        ):(
+          <div style={{display:'flex',flexDirection:'column',gap:8}}>
+            {aResoudre.map((c,i)=>{const sc=stCfg[c.statut]||stCfg.inconnu;return(
+              <div key={i} style={{display:'flex',alignItems:'flex-start',gap:9,background:sc.bg,border:`1px solid ${sc.border}`,borderRadius:10,padding:'11px 13px'}}>
+                <div style={{width:18,height:18,borderRadius:5,background:sc.bg,border:`1px solid ${sc.border}`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginTop:1}}><Ic n={sc.icon} s={9} c={sc.color}/></div>
+                <div><span style={{fontSize:12,fontWeight:600,color:'#ffffff'}}>{c.label}</span><p style={{fontSize:11,color:'#c0c0c0',margin:'3px 0 0',lineHeight:1.55}}>{c.detail}</p></div>
+              </div>
+            );})}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 const VerdictScreen=({data,onReset})=>{
   const [tab,setTab]=useState('verdict');
   const [showMethod,setShowMethod]=useState(false);
@@ -1119,13 +1174,22 @@ const VerdictScreen=({data,onReset})=>{
     attention:{icon:'alert',color:'#c9a227',bg:'rgba(201,162,39,.05)',border:'rgba(201,162,39,.14)',label:'À vérifier'},
     inconnu:{icon:'question',color:'#555555',bg:'rgba(255,255,255,.02)',border:'rgba(255,255,255,.06)',label:'Inconnu'},
   };
-  const r=data.rentabilite||{};const criteres=data.criteres||[];const risques=data.risques||[];const positifs=data.points_positifs||[];const manquants=data.documents_manquants||[];
+  const criteres=data.criteres||[];const risques=data.risques||[];const positifs=data.points_positifs||[];const manquants=data.documents_manquants||[];
+  // Rentabilité recalculée en JS (même formule que le simulateur) plutôt que l'arithmétique du LLM, pour garantir un chiffre identique entre le rapport et le simulateur.
+  const r=useMemo(()=>{
+    const r0=data.rentabilite||{};
+    const loyer=parseAmt(r0.loyerAnnuel),prix=parseAmt(r0.prixAcquisition),seuil=parseFloat(r0.seuilRequis)||0;
+    if(!loyer||!prix)return r0;
+    const taux=(loyer/prix*100).toFixed(2);
+    return{...r0,taux,conforme:seuil>0?parseFloat(taux)>=seuil:r0.conforme};
+  },[data]);
   const tabStyle=k=>({borderRadius:8,padding:'7px 16px',fontSize:12,fontWeight:600,color:tab===k?'#ffffff':'#505050',background:tab===k?'rgba(255,255,255,.06)':'transparent',border:tab===k?'1px solid rgba(255,255,255,.09)':'1px solid transparent'});
   return(
     <div style={{minHeight:'calc(100vh - 54px)',padding:'22px 26px 60px'}}>
       <div style={{maxWidth:1400,margin:'0 auto'}}>
         <div className="anim-fade" style={{display:'flex',gap:2,marginBottom:16,background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.06)',borderRadius:10,padding:3,width:'fit-content'}}>
           <button className="tab-btn" style={tabStyle('verdict')} onClick={()=>setTab('verdict')}>Rapport d'analyse</button>
+          <button className="tab-btn" style={tabStyle('objectifs')} onClick={()=>setTab('objectifs')}>Objectifs</button>
           <button className="tab-btn" style={tabStyle('simulateur')} onClick={()=>setTab('simulateur')}>Simulateur financier</button>
         </div>
         {tab==='verdict'&&(
@@ -1236,6 +1300,7 @@ const VerdictScreen=({data,onReset})=>{
             </div>
           </div>
         )}
+        {tab==='objectifs'&&<ObjectifsPanel r={r} criteres={criteres} stCfg={stCfg}/>}
         {tab==='simulateur'&&<div className="anim-fade"><FinancialSimulator prefill={data.rentabilite}/></div>}
       </div>
     </div>
