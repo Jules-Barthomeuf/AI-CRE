@@ -1053,25 +1053,15 @@ const FinancialSimulator=({prefill})=>{
   return(
     <div>
       {/* Header */}
-      <div style={{marginBottom:24}}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:14}}>
-          <div style={{display:'flex',alignItems:'center',gap:8}}>
-            <div style={{width:8,height:8,borderRadius:'50%',background:'#C9A227',flexShrink:0}}/>
-            <span style={{color:'#ffffff',fontWeight:700,fontSize:16,letterSpacing:'-0.3px'}}>Simulateur</span>
-          </div>
-          <div style={{display:'flex',alignItems:'center',gap:8}}>
-            <button onClick={handleExport} className="btn-g" style={{display:'flex',alignItems:'center',gap:6,borderRadius:20,padding:'7px 15px',fontSize:12,color:'#aaaaaa'}}><Ic n="download" s={12} c="#888888"/>Export complet</button>
-            <button onClick={handleShare} className="btn-g" style={{display:'flex',alignItems:'center',gap:6,borderRadius:20,padding:'7px 15px',fontSize:12,color:'#aaaaaa'}}>{shareCopied?<Ic n="check" s={12} c="#C9A227"/>:<Ic n="link" s={12} c="#888888"/>}{shareCopied?'Copié':'Partager'}</button>
-            <button onClick={handleReset} className="btn-g" style={{display:'flex',alignItems:'center',gap:6,borderRadius:20,padding:'7px 15px',fontSize:12,color:'#aaaaaa'}}><Ic n="ref" s={12} c="#888888"/>Reset</button>
-          </div>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:14,marginBottom:24}}>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <div style={{width:8,height:8,borderRadius:'50%',background:'#C9A227',flexShrink:0}}/>
+          <span style={{color:'#ffffff',fontWeight:700,fontSize:16,letterSpacing:'-0.3px'}}>Simulateur</span>
         </div>
-        <div style={{display:'flex',alignItems:'center',gap:24,marginTop:22}}>
-          {SIM_TABS.map(t=>(
-            <button key={t.id} className="tab-btn" onClick={()=>setActiveTab(t.id)}
-              style={{background:'none',padding:'8px 0',fontSize:12.5,color:activeTab===t.id?'#ffffff':'#666666',borderBottom:`2px solid ${activeTab===t.id?'#C9A227':'transparent'}`}}>
-              {t.label}
-            </button>
-          ))}
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <button onClick={handleExport} className="btn-g" style={{display:'flex',alignItems:'center',gap:6,borderRadius:20,padding:'7px 15px',fontSize:12,color:'#aaaaaa'}}><Ic n="download" s={12} c="#888888"/>Export complet</button>
+          <button onClick={handleShare} className="btn-g" style={{display:'flex',alignItems:'center',gap:6,borderRadius:20,padding:'7px 15px',fontSize:12,color:'#aaaaaa'}}>{shareCopied?<Ic n="check" s={12} c="#C9A227"/>:<Ic n="link" s={12} c="#888888"/>}{shareCopied?'Copié':'Partager'}</button>
+          <button onClick={handleReset} className="btn-g" style={{display:'flex',alignItems:'center',gap:6,borderRadius:20,padding:'7px 15px',fontSize:12,color:'#aaaaaa'}}><Ic n="ref" s={12} c="#888888"/>Reset</button>
         </div>
       </div>
 
@@ -1156,18 +1146,28 @@ const FinancialSimulator=({prefill})=>{
         </div>
 
         {/* RIGHT */}
-        <div key={activeTab} className="anim-fade" style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',gap:14}}>
-          {activeTab==='negociation'?(
-            <SimScenarios p={p}/>
-          ):activeTab==='loyer'?(
-            <SimLoyerRenego p={p}/>
-          ):(<>
-            <DonutChart fin={fin} p={p}/>
-            <FlatKpiRow items={kpiItems}/>
-            {activeTab==='graphiques'&&<ChartCarousel fin={fin} p={p}/>}
-            {activeTab==='revente'&&<SimReventeSynthese fin={fin} p={p}/>}
-          </>)}
-          {activeTab!=='loyer'&&<DetailedTable fin={fin} p={p}/>}
+        <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',gap:20}}>
+          <div style={{display:'flex',alignItems:'center',gap:24}}>
+            {SIM_TABS.map(t=>(
+              <button key={t.id} className="tab-btn" onClick={()=>setActiveTab(t.id)}
+                style={{background:'none',padding:'8px 0',fontSize:12.5,color:activeTab===t.id?'#ffffff':'#666666',borderBottom:`2px solid ${activeTab===t.id?'#C9A227':'transparent'}`}}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <div key={activeTab} className="anim-fade" style={{display:'flex',flexDirection:'column',gap:14}}>
+            {activeTab==='negociation'?(
+              <SimScenarios p={p}/>
+            ):activeTab==='loyer'?(
+              <SimLoyerRenego p={p}/>
+            ):(<>
+              <DonutChart fin={fin} p={p}/>
+              <FlatKpiRow items={kpiItems}/>
+              {activeTab==='graphiques'&&<ChartCarousel fin={fin} p={p}/>}
+              {activeTab==='revente'&&<SimReventeSynthese fin={fin} p={p}/>}
+            </>)}
+            {activeTab!=='loyer'&&<DetailedTable fin={fin} p={p}/>}
+          </div>
         </div>
       </div>
     </div>
