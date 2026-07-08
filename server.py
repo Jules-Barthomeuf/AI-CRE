@@ -211,7 +211,7 @@ class Handler(SimpleHTTPRequestHandler):
             additional = body.get('additionalInfo', '')
 
             prompt = build_prompt(documents, additional)
-            print(f'[Bail Bye] Analyse — {len(documents)} doc(s), prompt {len(prompt)} chars')
+            print(f'[AI-CRE] Analyse — {len(documents)} doc(s), prompt {len(prompt)} chars')
 
             payload = json.dumps({
                 'model': 'claude-sonnet-4-6',
@@ -234,7 +234,7 @@ class Handler(SimpleHTTPRequestHandler):
 
             claude_text = api_resp['content'][0]['text']
             parsed = extract_and_fix_json(claude_text)
-            print(f'[Bail Bye] Verdict : {parsed.get("verdict", "?")}')
+            print(f'[AI-CRE] Verdict : {parsed.get("verdict", "?")}')
 
             self.send_response(200)
             self._cors()
@@ -246,14 +246,14 @@ class Handler(SimpleHTTPRequestHandler):
 
         except urllib.error.HTTPError as e:
             err_body = e.read()
-            print(f'[Bail Bye] Erreur HTTP {e.code}: {err_body[:200]}')
+            print(f'[AI-CRE] Erreur HTTP {e.code}: {err_body[:200]}')
             self.send_response(e.code)
             self._cors()
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
             self.wfile.write(err_body)
         except Exception as ex:
-            print(f'[Bail Bye] ERREUR: {ex}')
+            print(f'[AI-CRE] ERREUR: {ex}')
             self.send_response(500)
             self._cors()
             self.send_header('Content-Type', 'application/json')
@@ -275,8 +275,8 @@ if __name__ == '__main__':
         address_family = socket.AF_INET6
     try:
         httpd = DualHTTPServer(('::', PORT), Handler)
-        print(f'✓ Bail Bye — http://localhost:{PORT}/bail-bye.html')
+        print(f'✓ AI-CRE — http://localhost:{PORT}/bail-bye.html')
     except OSError:
         httpd = HTTPServer(('0.0.0.0', PORT), Handler)
-        print(f'✓ Bail Bye — http://127.0.0.1:{PORT}/bail-bye.html')
+        print(f'✓ AI-CRE — http://127.0.0.1:{PORT}/bail-bye.html')
     httpd.serve_forever()

@@ -187,7 +187,7 @@ const computeFinancials=p=>{
   const honorairesEnSus=commissionAgentInclusFAI?0:honorairesAchat;
   const prixHorsDroits=commissionAgentInclusFAI?prixNegocie-honorairesAchat:prixNegocie;
   const droits=Math.round(prixHorsDroits*tauxDroitsEnregistrement/100);
-  // Honoraires Bail Bye (fixe ou % du prix négocié) + prime négo (% de l'écart FAI/négocié)
+  // Honoraires AI-CRE (fixe ou % du prix négocié) + prime négo (% de l'écart FAI/négocié)
   const feesBailBye=Math.round(feesBailByeType==='fixe'?tauxFeesBailBye:prixNegocie*tauxFeesBailBye/100);
   const primeNego=Math.round(Math.max(0,prixBien-prixNegocie)*tauxIncentiveBailBye/100);
   const honorairesBailByeMontant=feesBailBye+primeNego;
@@ -301,7 +301,7 @@ const DonutChart=({fin,p})=>{
     {l:'Prix négocié',v:p.prixNegocie,c:'#22d3a0'},
     ...(fin.honorairesEnSus>0?[{l:'Hon. agent (en sus)',v:fin.honorairesEnSus,c:'#8b5cf6'}]:[]),
     {l:'Droits enreg.',v:fin.droits,c:'#71ccba'},
-    {l:'Hon. Bail Bye',v:fin.honorairesBailByeMontant,c:'#f59e0b'},
+    {l:'Hon. AI-CRE',v:fin.honorairesBailByeMontant,c:'#f59e0b'},
     {l:'Frais divers',v:fin.fraisDivers,c:'#ef4444'},
   ].filter(s=>s.v>0);
   const total=segs.reduce((s,x)=>s+x.v,0);
@@ -780,8 +780,8 @@ const MHero=({label,value,sub,border})=>(
 
 /* ── FINANCIAL SIMULATOR ── */
 const FinancialSimulator=({prefill})=>{
-  const iL=prefill?.loyerAnnuel?Math.max(300,Math.round(parseAmt(prefill.loyerAnnuel)/12)):1300;
-  const iP=prefill?.prixAcquisition?Math.max(50000,parseAmt(prefill.prixAcquisition)):200000;
+  const iL=prefill?.loyerAnnuel?Math.max(300,Math.round(parseAmt(prefill.loyerAnnuel)/12)):4000;
+  const iP=prefill?.prixAcquisition?Math.max(50000,parseAmt(prefill.prixAcquisition)):600000;
   const [p,setP]=useState({
     surface:100,
     loyerMensuel:iL,prixBien:iP,prixNegocie:prefill?.prixAcquisition?iP:Math.round(iP*0.98),

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bail Bye — Analyse d'investissement</title>
+<title>AI-CRE — Analyse d'investissement</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -187,7 +187,7 @@ const computeFinancials=p=>{
   const honorairesEnSus=commissionAgentInclusFAI?0:honorairesAchat;
   const prixHorsDroits=commissionAgentInclusFAI?prixNegocie-honorairesAchat:prixNegocie;
   const droits=Math.round(prixHorsDroits*tauxDroitsEnregistrement/100);
-  // Honoraires Bail Bye (fixe ou % du prix négocié) + prime négo (% de l'écart FAI/négocié)
+  // Honoraires AI-CRE (fixe ou % du prix négocié) + prime négo (% de l'écart FAI/négocié)
   const feesBailBye=Math.round(feesBailByeType==='fixe'?tauxFeesBailBye:prixNegocie*tauxFeesBailBye/100);
   const primeNego=Math.round(Math.max(0,prixBien-prixNegocie)*tauxIncentiveBailBye/100);
   const honorairesBailByeMontant=feesBailBye+primeNego;
@@ -301,7 +301,7 @@ const DonutChart=({fin,p})=>{
     {l:'Prix négocié',v:p.prixNegocie,c:'#22d3a0'},
     ...(fin.honorairesEnSus>0?[{l:'Hon. agent (en sus)',v:fin.honorairesEnSus,c:'#8b5cf6'}]:[]),
     {l:'Droits enreg.',v:fin.droits,c:'#71ccba'},
-    {l:'Hon. Bail Bye',v:fin.honorairesBailByeMontant,c:'#f59e0b'},
+    {l:'Hon. AI-CRE',v:fin.honorairesBailByeMontant,c:'#f59e0b'},
     {l:'Frais divers',v:fin.fraisDivers,c:'#ef4444'},
   ].filter(s=>s.v>0);
   const total=segs.reduce((s,x)=>s+x.v,0);
@@ -780,8 +780,8 @@ const MHero=({label,value,sub,border})=>(
 
 /* ── FINANCIAL SIMULATOR ── */
 const FinancialSimulator=({prefill})=>{
-  const iL=prefill?.loyerAnnuel?Math.max(300,Math.round(parseAmt(prefill.loyerAnnuel)/12)):1300;
-  const iP=prefill?.prixAcquisition?Math.max(50000,parseAmt(prefill.prixAcquisition)):200000;
+  const iL=prefill?.loyerAnnuel?Math.max(300,Math.round(parseAmt(prefill.loyerAnnuel)/12)):4000;
+  const iP=prefill?.prixAcquisition?Math.max(50000,parseAmt(prefill.prixAcquisition)):600000;
   const [p,setP]=useState({
     surface:100,
     loyerMensuel:iL,prixBien:iP,prixNegocie:prefill?.prixAcquisition?iP:Math.round(iP*0.98),
@@ -836,11 +836,11 @@ const FinancialSimulator=({prefill})=>{
             <TogRow label="Inclus dans le prix FAI" value={p.commissionAgentInclusFAI} onChange={set('commissionAgentInclusFAI')} sub={p.commissionAgentInclusFAI?'Déjà compris dans le prix négocié':'Vient en plus du prix négocié'}/>
           </>}
           <SliderRow label="Droits d'enregistrement" value={p.tauxDroitsEnregistrement} min={0} max={10} step={0.1} unit="%" onChange={set('tauxDroitsEnregistrement')} sub={`soit ${fmtEur(fin.droits)}`}/>
-          <TogRow label="Honoraires Bail Bye fixes" value={p.feesBailByeType==='fixe'} onChange={v=>set('feesBailByeType')(v?'fixe':'pct')}/>
+          <TogRow label="Honoraires AI-CRE fixes" value={p.feesBailByeType==='fixe'} onChange={v=>set('feesBailByeType')(v?'fixe':'pct')}/>
           {p.feesBailByeType==='fixe'
-            ?<SliderRow label="Honoraires Bail Bye" value={p.tauxFeesBailBye} min={0} max={100000} step={500} unit="€" onChange={set('tauxFeesBailBye')}/>
-            :<SliderRow label="Honoraires Bail Bye" value={p.tauxFeesBailBye} min={0} max={15} step={0.5} unit="%" onChange={set('tauxFeesBailBye')} sub={`soit ${fmtEur(fin.feesBailBye)}`}/>}
-          <SliderRow label="Prime négo Bail Bye" value={p.tauxIncentiveBailBye} min={0} max={50} step={1} unit="%" onChange={set('tauxIncentiveBailBye')} sub={`soit ${fmtEur(fin.primeNego)}`}/>
+            ?<SliderRow label="Honoraires AI-CRE" value={p.tauxFeesBailBye} min={0} max={100000} step={500} unit="€" onChange={set('tauxFeesBailBye')}/>
+            :<SliderRow label="Honoraires AI-CRE" value={p.tauxFeesBailBye} min={0} max={15} step={0.5} unit="%" onChange={set('tauxFeesBailBye')} sub={`soit ${fmtEur(fin.feesBailBye)}`}/>}
+          <SliderRow label="Prime négo AI-CRE" value={p.tauxIncentiveBailBye} min={0} max={50} step={1} unit="%" onChange={set('tauxIncentiveBailBye')} sub={`soit ${fmtEur(fin.primeNego)}`}/>
         </div>
         <div style={{marginBottom:18}}>
           <SecHdr label="Financement"/>
@@ -903,7 +903,7 @@ const FinancialSimulator=({prefill})=>{
             <MKpi label="Apport" value={fmtEur(p.apport)} sub={`${fin.budget>0?(p.apport/fin.budget*100).toFixed(0):0}%`} color="#22d3a0" border="rgba(34,211,160,.1)"/>
             <MKpi label="Crédit bancaire" value={fmtEur(fin.credit)} sub={`LTV ${fin.budget>0?(fin.credit/fin.budget*100).toFixed(0):0}%`} color="#5a5af0" border="rgba(99,102,241,.1)"/>
             <MKpi label="Droits + frais" value={fmtEur(fin.droits+fin.fraisDivers)} color="#c9a227" border="rgba(201,162,39,.1)"/>
-            <MKpi label="Revenu Bail Bye" value={fmtEur(fin.honorairesBailByeMontant)} sub={`Hon. ${fmtEur(fin.feesBailBye)} + Prime négo ${fmtEur(fin.primeNego)}`} color="#f472b6" border="rgba(244,114,182,.1)"/>
+            <MKpi label="Revenu AI-CRE" value={fmtEur(fin.honorairesBailByeMontant)} sub={`Hon. ${fmtEur(fin.feesBailBye)} + Prime négo ${fmtEur(fin.primeNego)}`} color="#f472b6" border="rgba(244,114,182,.1)"/>
           </div>
         </div>
 
@@ -1330,7 +1330,7 @@ const Header=({onReset,showBack})=>(
   <header style={{borderBottom:'1px solid rgba(255,255,255,.06)',background:'rgba(17,17,20,.96)',backdropFilter:'blur(20px)',position:'sticky',top:0,zIndex:100}}>
     <div style={{maxWidth:1400,margin:'0 auto',padding:'0 26px',height:52,display:'flex',alignItems:'center',gap:10}}>
       {showBack&&<button className="btn-g" onClick={onReset} style={{borderRadius:8,padding:'5px 12px',color:'#888888',fontSize:12,display:'flex',alignItems:'center',gap:5}}><Ic n="back" s={11} c="#606060"/>Nouveau projet</button>}
-      <a href="doc-ainalyzer.html" style={{color:'#ffffff',fontWeight:800,fontSize:14,letterSpacing:'-0.4px',textDecoration:'none'}}>Bail Bye</a>
+      <a href="doc-ainalyzer.html" style={{color:'#ffffff',fontWeight:800,fontSize:14,letterSpacing:'-0.4px',textDecoration:'none'}}>AI-CRE</a>
     </div>
   </header>
 );

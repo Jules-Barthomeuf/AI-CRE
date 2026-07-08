@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulateur — AI-CRE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#080808;font-family:'Montserrat',-apple-system,sans-serif;color:#e0e0e0;-webkit-font-smoothing:antialiased}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.anim-fade{animation:fadeIn .35s ease both}
+.anim-d1{animation:fadeIn .35s .06s ease both}
+.anim-d2{animation:fadeIn .35s .12s ease both}
+.anim-d3{animation:fadeIn .35s .18s ease both}
+@keyframes segFade{from{opacity:0}to{opacity:1}}
+@keyframes growY{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes growX{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes drawLine{to{stroke-dashoffset:0}}
+@keyframes popIn{from{opacity:0;transform:scale(.4)}to{opacity:1;transform:scale(1)}}
+.donut-label{animation:segFade .5s ease both}
+.bar-grow{transform-box:fill-box;animation:growY .45s cubic-bezier(.4,0,.2,1) both}
+.hbar-grow{transform-box:fill-box;animation:growX .5s cubic-bezier(.4,0,.2,1) both}
+.line-draw{animation:drawLine 1.2s cubic-bezier(.4,0,.2,1) both}
+.area-in{animation:segFade 1s ease both}
+.marker-pop{transform-box:fill-box;transform-origin:center;animation:popIn .4s cubic-bezier(.4,0,.2,1) both}
+.ease-premium{transition:all .3s cubic-bezier(.4,0,.2,1)}
+.btn-p{background:#C9A227;transition:opacity .25s cubic-bezier(.4,0,.2,1),transform .25s cubic-bezier(.4,0,.2,1),background .25s cubic-bezier(.4,0,.2,1);cursor:pointer;border:none}
+.btn-p:hover:not(:disabled){opacity:.88;transform:translateY(-1px)}
+.btn-p:disabled{opacity:.35;cursor:not-allowed}
+.btn-g{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);transition:background .3s cubic-bezier(.4,0,.2,1),border-color .3s cubic-bezier(.4,0,.2,1),color .3s cubic-bezier(.4,0,.2,1),transform .2s cubic-bezier(.4,0,.2,1);cursor:pointer}
+.btn-g:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18)}
+.btn-g:active{transform:scale(.97)}
+select{background:#111111;border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:5px 9px;color:#888;font-size:11px;font-family:inherit;outline:none;cursor:pointer;transition:border-color .25s ease}
+select:hover{border-color:rgba(255,255,255,.22)}
+::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:4px;transition:background .25s ease}
+.no-scrollbar{scrollbar-width:none;-ms-overflow-style:none}
+.no-scrollbar::-webkit-scrollbar{display:none;width:0;height:0}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:3px;border-radius:3px;outline:none;cursor:pointer;display:block;margin:4px 0;transition:background .35s cubic-bezier(.4,0,.2,1)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#C9A227;border:2px solid #080808;cursor:pointer;box-shadow:0 0 0 3px rgba(201,162,39,.15);transition:transform .2s cubic-bezier(.4,0,.2,1),box-shadow .2s cubic-bezier(.4,0,.2,1)}
+input[type=range]:active::-webkit-slider-thumb{transform:scale(1.15);box-shadow:0 0 0 5px rgba(201,162,39,.2)}
+input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:#C9A227;border:1px solid #080808;cursor:pointer;transition:transform .2s cubic-bezier(.4,0,.2,1)}
+.tab-btn{cursor:pointer;border:none;outline:none;font-family:inherit;transition:color .3s cubic-bezier(.4,0,.2,1),border-color .3s cubic-bezier(.4,0,.2,1)}
+.tbl-tr>td{transition:background .2s ease}
+.tbl-tr:hover>td{background:rgba(255,255,255,.015)!important}
+.acc-hdr{cursor:pointer;user-select:none;transition:opacity .25s ease}
+.acc-hdr:hover{opacity:.8}
+.sticky-col{position:sticky;left:0;z-index:2;background:#262626}
+.dtbl td,.dtbl th{white-space:nowrap;padding:7px 12px;font-size:10.5px;border-bottom:1px solid rgba(255,255,255,.04)}
+.dtbl th{font-size:10px;font-weight:600;color:#555;text-align:right;padding:8px 12px}
+.dtbl th:first-child{text-align:left}
+.sec-hdr-row td{background:#0a0a0a!important;color:#C9A227;font-size:9px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;padding:10px 14px!important;border-bottom:1px solid rgba(201,162,39,.1)!important}
+.sec-hdr-row td.sticky-col{background:#0a0a0a!important}
+.arrow-btn{width:28px;height:28px;border-radius:7px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .3s cubic-bezier(.4,0,.2,1),color .3s cubic-bezier(.4,0,.2,1),opacity .3s cubic-bezier(.4,0,.2,1),transform .2s cubic-bezier(.4,0,.2,1);color:#707070}
+.arrow-btn:hover:not(:disabled){background:rgba(255,255,255,.1);color:#ffffff;transform:scale(1.06)}
+.arrow-btn:active:not(:disabled){transform:scale(.94)}
+.arrow-btn:disabled{opacity:.25;cursor:default}
+.chart-dot{cursor:pointer;border-radius:50%;transition:all .35s cubic-bezier(.4,0,.2,1)}
+.premium-card{transition:border-color .3s cubic-bezier(.4,0,.2,1)}
+.premium-card:hover{border-color:rgba(255,255,255,.16)}
+.pill-btn{cursor:pointer;transition:background .3s cubic-bezier(.4,0,.2,1),border-color .3s cubic-bezier(.4,0,.2,1),color .3s cubic-bezier(.4,0,.2,1),transform .15s cubic-bezier(.4,0,.2,1)}
+.pill-btn:hover{transform:translateY(-1px)}
+.pill-btn:active{transform:translateY(0) scale(.98)}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const{useState,useRef,useEffect,useMemo,useCallback}=React;
+
+const fmtEur=n=>`${Math.round(n).toLocaleString('fr-FR')} €`;
+const fmtK=n=>{const a=Math.abs(n);if(a>=1e6)return`${(n/1e6).toFixed(2).replace('.',',')} M€`;if(a>=1000)return`${Math.round(n/1000)} k€`;return`${Math.round(n)} €`;};
+const parseAmt=s=>{if(!s)return 0;const n=parseFloat(String(s).replace(/[\s ]/g,'').replace(/[^\d.,-]/g,'').replace(',','.'));return isNaN(n)?0:Math.round(n);};
+/* ── icons ── */
+const Ic=({n,s=16,c='currentColor',sw=1.8})=>{
+  const p={
+    upload:<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>,
+    x:<><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>,
+    check:<polyline points="20,6 9,17 4,12"/>,
+    alert:<><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></>,
+    info:<><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></>,
+    bldg:<><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></>,
+    trend:<><polyline points="23,6 13.5,15.5 8.5,10.5 1,18"/><polyline points="17,6 23,6 23,12"/></>,
+    lock:<><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></>,
+    plus:<><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>,
+    doc:<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></>,
+    back:<polyline points="15,18 9,12 15,6"/>,
+    zap:<polygon points="13,2 3,14 12,14 11,22 21,10 12,10 13,2"/>,
+    shield:<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>,
+    euro:<path d="M4 10h12M4 14h12M19 5a9 9 0 1 0 0 14"/>,
+    arrowl:<polyline points="15,18 9,12 15,6"/>,
+    arrowr:<polyline points="9,18 15,12 9,6"/>,
+    chevdown:<polyline points="6,9 12,15 18,9"/>,
+    question:<><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></>,
+    ref:<polyline points="1,4 1,10 7,10"/>,
+    download:<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></>,
+    link:<><path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07l1.5-1.5"/></>,
+  };
+  return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">{p[n]}</svg>;
+};
+/* ── FINANCIAL ENGINE ── */
+const computeFinancials=p=>{
+  const{loyerMensuel,prixBien,prixNegocie,dureeCredit,apport,indexation,tva,tauxTVA=20,
+    chargesCopro,chargesCoproRefact=false,taxeFonciere,taxeFonciereRefact,tauxInteret,tauxAssuranceCredit,
+    pretInFine,fraisCreationSociete,fraisDossierBancaire,fraisCourtage,
+    comptabiliteAnnuelle,assurancePNE,gestionLocativePct,chargesDiverses,
+    travauxBailleur,anneeRevente,honoraireAgentRevente,rendementBrutAcquereur,
+    vacanceLocative=0,surface=0,
+    commissionAgentActive=true,commissionAgentType='pct',tauxCommissionAgent=5,commissionAgentInclusFAI=true,
+    tauxDroitsEnregistrement=8,
+    feesBailByeType='pct',tauxFeesBailBye=0,tauxIncentiveBailBye=0,
+    revalorisationActive=false,loyerRevalorise=0,anneeRevalorisation=0,
+    renegociationActive=false,anneeRenegociation=0,nouveauTauxRenegociation=0,moisIRA=6}=p;
+
+  // Commission agent — fixe ou % du prix négocié, inclus dans le FAI ou en sus
+  const honorairesAchat=commissionAgentActive?Math.round(commissionAgentType==='fixe'?tauxCommissionAgent:prixNegocie*tauxCommissionAgent/100):0;
+  const honorairesEnSus=commissionAgentInclusFAI?0:honorairesAchat;
+  const prixHorsDroits=commissionAgentInclusFAI?prixNegocie-honorairesAchat:prixNegocie;
+  const droits=Math.round(prixHorsDroits*tauxDroitsEnregistrement/100);
+  // Honoraires AI-CRE (fixe ou % du prix négocié) + prime négo (% de l'écart FAI/négocié)
+  const feesBailBye=Math.round(feesBailByeType==='fixe'?tauxFeesBailBye:prixNegocie*tauxFeesBailBye/100);
+  const primeNego=Math.round(Math.max(0,prixBien-prixNegocie)*tauxIncentiveBailBye/100);
+  const honorairesBailByeMontant=feesBailBye+primeNego;
+  const fraisDivers=fraisCreationSociete+fraisDossierBancaire+fraisCourtage;
+  const budget=prixNegocie+droits+honorairesBailByeMontant+fraisDivers+honorairesEnSus;
+  const credit=Math.max(0,budget-apport);
+  let mr=tauxInteret/100/12;
+  let nm=Math.max(1,dureeCredit*12);
+  let echeanceMensuelle=pretInFine?(credit*mr):(mr>0?credit*mr/(1-Math.pow(1+mr,-nm)):credit/nm);
+  const assuranceAnnuelle=Math.round(credit*tauxAssuranceCredit/100);
+  const amortFiscal=Math.round(prixHorsDroits*0.80/25);
+  const vacanceFactor=1-(vacanceLocative||0)/100;
+
+  let capitalRestant=credit,deficitReporte=0,loyerBrutPrecedent=Math.round(loyerMensuel*12);
+  const rows=[];
+  for(let yr=1;yr<=25;yr++){
+    let loyerBrutTheo=yr===1?Math.round(loyerMensuel*12):Math.round(loyerBrutPrecedent*(1+indexation/100));
+    if(revalorisationActive&&yr===anneeRevalorisation&&loyerRevalorise>0)loyerBrutTheo=Math.round(loyerRevalorise);
+    loyerBrutPrecedent=loyerBrutTheo;
+    const loyerBrut=Math.round(loyerBrutTheo*vacanceFactor);
+    const loyersNets=loyerBrut-(chargesCoproRefact?0:chargesCopro)-(taxeFonciereRefact?0:taxeFonciere);
+
+    let interets=0,capital=0,ira=0;
+    if(yr<=dureeCredit&&credit>0&&capitalRestant>0){
+      if(pretInFine){
+        interets=Math.round(capitalRestant*mr*12);
+        capital=yr===dureeCredit?capitalRestant:0;
+        capitalRestant=Math.max(0,capitalRestant-capital);
+      }else if(renegociationActive&&yr===anneeRenegociation){
+        let cap=capitalRestant;
+        for(let m=0;m<12;m++){const i=cap*mr;const c=echeanceMensuelle-i;interets+=i;capital+=c;cap-=c;}
+        interets=Math.round(interets);capital=Math.round(capital);
+        ira=Math.round(interets*moisIRA/12);
+        capitalRestant=Math.max(0,capitalRestant-capital);
+        mr=nouveauTauxRenegociation/100/12;
+        const nmRestant=Math.max(1,(dureeCredit-yr)*12);
+        echeanceMensuelle=capitalRestant>0?(mr>0?capitalRestant*mr/(1-Math.pow(1+mr,-nmRestant)):capitalRestant/nmRestant):0;
+      }else{
+        let cap=capitalRestant;
+        for(let m=0;m<12;m++){const i=cap*mr;const c=echeanceMensuelle-i;interets+=i;capital+=c;cap-=c;}
+        interets=Math.round(interets);capital=Math.round(capital);
+        capitalRestant=Math.max(0,capitalRestant-capital);
+      }
+    }
+    const echeance=interets+capital;
+
+    const baseGestion=loyerBrut-(chargesCoproRefact?chargesCopro:0)-(taxeFonciereRefact?taxeFonciere:0);
+    const gestionLoc=Math.round(baseGestion*gestionLocativePct/100);
+    const chargesHorsTravaux=gestionLoc+chargesDiverses+comptabiliteAnnuelle+assurancePNE;
+    const chargesExploit=chargesHorsTravaux+travauxBailleur;
+
+    const resFiscal=yr===1
+      ?loyersNets-amortFiscal-interets-chargesExploit-(droits+honorairesBailByeMontant+fraisDivers)
+      :loyersNets-amortFiscal-interets-chargesExploit+deficitReporte;
+    let IS=0;
+    if(resFiscal>0){IS=Math.round(Math.min(resFiscal,42500)*0.15+Math.max(0,resFiscal-42500)*0.25);deficitReporte=0;}
+    else deficitReporte=resFiscal;
+
+    let tvaNet=0,tvaCollectee=0,tvaDeductible=0,creditTVA=0;
+    if(tva){
+      tvaCollectee=Math.round(loyerBrut*tauxTVA/100);
+      const deductibleRecurrent=(gestionLoc+comptabiliteAnnuelle+assurancePNE+chargesDiverses+travauxBailleur)*tauxTVA/100;
+      const deductibleAcquisition=yr===1?(honorairesBailByeMontant+honorairesEnSus+fraisDivers)*tauxTVA/100:0;
+      tvaDeductible=Math.round(deductibleRecurrent+deductibleAcquisition);
+      creditTVA=Math.max(0,tvaDeductible-tvaCollectee);
+      tvaNet=Math.min(tvaCollectee,tvaDeductible);
+    }
+
+    const CF=loyersNets-echeance-assuranceAnnuelle-ira-chargesExploit-IS+tvaNet;
+    const rendementLocatifNet=budget>0?(loyersNets/budget*100):0;
+    const prixVenteFAITemp=rendementBrutAcquereur>0?loyerBrut/(rendementBrutAcquereur/100):0;
+    const patrimoineNet=prixVenteFAITemp*(1-honoraireAgentRevente/100)-capitalRestant;
+    rows.push({annee:yr,loyerBrut,loyerBrutTheo,loyersNets,interets,capital,echeance,ira,
+      capitalRestant,chargesExploit,chargesHorsTravaux,gestionLoc,travauxPart:travauxBailleur,
+      tvaCollectee,tvaDeductible,creditTVA,
+      IS,tvaNet,CF,resFiscal:Math.round(resFiscal),rendementLocatifNet,patrimoineNet});
+  }
+  const revIdx=Math.min(anneeRevente,25)-1;
+  const rev=rows[revIdx]||rows[24];
+  const valRevente=rendementBrutAcquereur>0?Math.round(rev.loyersNets/(rendementBrutAcquereur/100)):0;
+  const prixNet=Math.round(valRevente*(1-honoraireAgentRevente/100));
+  const produitNet=prixNet-rev.capitalRestant;
+  const totalCF=rows.slice(0,anneeRevente).reduce((s,r)=>s+r.CF,0);
+  const cfMoisMoyen=Math.round(totalCF/anneeRevente/12);
+  const creation=totalCF+produitNet;
+  const wealthCreated=creation-apport;
+  const multiple=apport>0?(creation/apport).toFixed(2):'—';
+  const enrichAn=apport>0?Math.round(wealthCreated/anneeRevente):0;
+  const tri=apport>0&&anneeRevente>0?((Math.pow(1+wealthCreated/apport,1/anneeRevente)-1)*100):0;
+  const rendBrut=prixNegocie>0?((loyerMensuel*12/prixNegocie)*100).toFixed(2):'0';
+  const rendYears=rows.slice(0,anneeRevente);
+  const rendementLocatifGlobalNet=rendYears.length?rendYears.reduce((s,r)=>s+r.rendementLocatifNet,0)/rendYears.length:0;
+  const amortissementsCumules=amortFiscal*Math.min(anneeRevente,25);
+  const valeurNetComptable=Math.round(prixHorsDroits*0.8-amortissementsCumules);
+  const loyerParM2=surface>0?Math.round(loyerMensuel*12/surface):0;
+  const prixNetParM2=surface>0?Math.round(prixNet/surface):0;
+  const vncParM2=surface>0?Math.round(valeurNetComptable/surface):0;
+  const cumulData=[];let cum=0;
+  for(let i=0;i<Math.min(anneeRevente,25);i++){
+    cum+=rows[i].CF;
+    cumulData.push({annee:rows[i].annee,v:i===Math.min(anneeRevente,25)-1?cum+produitNet:cum,isRevente:i===Math.min(anneeRevente,25)-1});
+  }
+  const cfMoyenAn=Math.round(totalCF/anneeRevente);
+  let anneeRecuperationApport=null,anneeDoubleApport=null,cumulRecup=0;
+  for(let i=0;i<rows.length;i++){
+    const r=rows[i];
+    cumulRecup+=r.CF+Math.abs(r.capital);
+    if(anneeRecuperationApport===null&&apport>0&&cumulRecup>=apport)anneeRecuperationApport=r.annee;
+    if(anneeDoubleApport===null&&apport>0&&cumulRecup>=apport*2)anneeDoubleApport=r.annee;
+  }
+  return{budget,credit,droits,fraisDivers,honorairesAchat,honorairesEnSus,honorairesBailByeMontant,feesBailBye,primeNego,
+    prixHorsDroits,echeanceMensuelle:Math.round(echeanceMensuelle),
+    assuranceAnnuelle,amortFiscal,rows,valRevente,prixNet,capRestantRevente:rev.capitalRestant,
+    produitNet,tri:tri.toFixed(2),multiple,enrichAn,cfMoisMoyen,cfMoyenAn,totalCF,creation,
+    rendBrut,rendementLocatifGlobalNet,valeurNetComptable,loyerParM2,prixNetParM2,vncParM2,cumulData,
+    anneeRecuperationApport,anneeDoubleApport};
+};
+
+/* ── SVG CHARTS ── */
+
+// Donut / Pie chart
+const DonutChart=({fin,p})=>{
+  const segs=[
+    {l:'Prix du bien négocié FAI',v:Math.round(p.prixNegocie||0),c:'#C9A227'},
+    {l:"Droits d'enregistrement estimés",v:Math.round(fin.droits||0),c:'#8B5CF6'},
+    {l:'Honoraires Klocka TTC',v:Math.round(fin.honorairesBailByeMontant||0),c:'#48C7A5'},
+    {l:"Frais divers à l'acquisition",v:Math.round(fin.fraisDivers||0),c:'#E76F51'},
+  ].filter(s=>s.v>0);
+  const total=fin.budget||segs.reduce((s,x)=>s+x.v,0);
+  if(!total)return null;
+  const R=74,ri=60,cx=110,cy=110;
+  const toXY=(r,ang)=>({x:cx+r*Math.cos((ang-90)*Math.PI/180),y:cy+r*Math.sin((ang-90)*Math.PI/180)});
+  let ang=0;
+  const paths=segs.map(s=>{
+    const sweep=s.v/total*360;
+    const a1=ang,a2=ang+sweep-2;
+    const mid=ang+sweep/2;
+    ang+=sweep;
+    const s1=toXY(R,a1),e1=toXY(R,a2),s2=toXY(ri,a2),e2=toXY(ri,a1);
+    const large=sweep>180?1:0;
+    const d=`M${s1.x} ${s1.y} A${R} ${R} 0 ${large} 1 ${e1.x} ${e1.y} L${s2.x} ${s2.y} A${ri} ${ri} 0 ${large} 0 ${e2.x} ${e2.y}Z`;
+    const lp=toXY(R+16,mid);
+    return{...s,d,mid,pct:(s.v/total*100).toFixed(0),lx:lp.x,ly:lp.y};
+  });
+  const sweepDuration=1200;
+  const sweepR=(R+ri)/2;
+  const circumference=2*Math.PI*sweepR;
+  return(
+    <div className="premium-card" style={{border:'1px solid rgba(255,255,255,.08)',borderRadius:8,background:'#0c0c0c',padding:20}}>
+      <div style={{display:'flex',alignItems:'center',gap:32,flexWrap:'wrap'}}>
+        <div style={{position:'relative',width:220,height:220,flexShrink:0}}>
+          <svg width={220} height={220} viewBox="0 0 220 220">
+            <defs>
+              <mask id="donutSweepMask">
+                <circle cx={cx} cy={cy} r={sweepR} fill="none" stroke="#ffffff" strokeWidth={R-ri+6} strokeLinecap="round"
+                  strokeDasharray={circumference} strokeDashoffset={circumference} transform={`rotate(-90 ${cx} ${cy})`}
+                  className="line-draw" style={{animationDuration:`${sweepDuration}ms`}}/>
+              </mask>
+            </defs>
+            <g mask="url(#donutSweepMask)">
+              {paths.map((p,i)=><path key={i} d={p.d} fill={p.c}/>)}
+            </g>
+            {paths.map((s,i)=><text key={i} className="donut-label" style={{animationDelay:`${Math.round(s.mid/360*sweepDuration)}ms`}} x={s.lx} y={s.ly} textAnchor="middle" dominantBaseline="middle" fill={s.c} fontSize={11} fontWeight={600} fontFamily="Montserrat,sans-serif">{s.pct}%</text>)}
+          </svg>
+          <div className="anim-fade" style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',pointerEvents:'none',animationDelay:'150ms'}}>
+            <span style={{color:'#ffffff',fontSize:18,fontWeight:700,lineHeight:1.2}}>{fmtEur(total)}</span>
+            <span style={{fontSize:10,color:'#6b7280',marginTop:2}}>Prix de revient</span>
+          </div>
+        </div>
+        <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',gap:10}}>
+          {segs.map((s,i)=>(
+            <div key={i} className="anim-fade" style={{display:'flex',alignItems:'center',justifyContent:'space-between',fontSize:14,animationDelay:`${i*70}ms`}}>
+              <span style={{color:'#9ca3af',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',paddingRight:12}}>{s.l}</span>
+              <span style={{color:'#ffffff',fontWeight:500,whiteSpace:'nowrap'}}>{fmtEur(s.v)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Cash-flow bar chart
+// ── CHART HELPERS ──────────────────────────────────────────
+const FONT='Montserrat,sans-serif';
+const mkGrid=(W,H,padL,padR,padT,ticks,toY,label)=>(
+  <g>
+    <text transform={`rotate(-90)`} x={-(padT+H/2)} y={10} textAnchor="middle" fontSize={9} fill="#6b6b6b" fontFamily={FONT}>{label}</text>
+    {ticks.map((t,i)=>{
+      const y=toY(t);
+      return<g key={i}>
+        <line x1={padL} x2={W-padR} y1={y} y2={y} stroke="rgba(255,255,255,.08)" strokeWidth={0.6} strokeDasharray="4 4"/>
+        <text x={padL-6} y={y+4} textAnchor="end" fontSize={9} fill="#9ca3af" fontFamily={FONT}>{typeof t==='number'&&Math.abs(t)>=1000?`${Math.round(t/1000)}`:t}</text>
+      </g>;
+    })}
+  </g>
+);
+
+const HERO_METRICS=['richesse','cashflow','patrimoine'];
+const heroConfig=(metric,fin,p)=>{
+  const rows=fin.rows.slice(0,p.anneeRevente);
+  if(metric==='cashflow')return{
+    kind:'area',title:'Cash-flow annuel',subtitle:`Projection sur ${p.anneeRevente} ans`,
+    bigValue:fmtEur(fin.cfMoyenAn),color:'#C9A227',
+    data:rows.map(r=>({annee:r.annee,value:r.CF})),
+  };
+  if(metric==='patrimoine')return{
+    kind:'area',title:'Patrimoine net',subtitle:`Valeur à la revente année ${p.anneeRevente}`,
+    bigValue:fmtEur(fin.prixNet),color:'#C9A227',
+    data:rows.map(r=>({annee:r.annee,value:r.patrimoineNet})),
+    markers:{
+      recup:fin.anneeRecuperationApport?{annee:fin.anneeRecuperationApport,montant:p.apport}:null,
+      double:fin.anneeDoubleApport?{annee:fin.anneeDoubleApport,montant:p.apport*2}:null,
+    },
+  };
+  return{
+    kind:'grouped',title:'Création de richesse annuelle',subtitle:`Cash-flow + capital remboursé sur ${p.anneeRevente} ans`,
+    bigValue:fmtEur(fin.wealthCreated),
+    data:rows.map(r=>({annee:r.annee,capital:Math.abs(r.capital),cashflow:r.CF})),
+  };
+};
+const AreaHeroChart=({data,color,markers})=>{
+  const vals=data.map(d=>d.value);
+  const maxPos=Math.max(1,...vals.filter(v=>v>0));
+  const maxNeg=Math.max(1,...vals.filter(v=>v<0).map(Math.abs));
+  const W=1160,H=420,padL=100,padR=20,padT=28,padB=64;
+  const zeroY=padT+H*maxPos/(maxPos+maxNeg);
+  const toX=i=>padL+(W-padL-padR)*i/(data.length-1||1);
+  const toY=v=>v>=0?zeroY-H*v/(maxPos+maxNeg):zeroY+H*(-v)/(maxPos+maxNeg);
+  const step=Math.ceil((maxPos+maxNeg)/4/1000)*1000||1;
+  const ticks=[];for(let t=-Math.round(maxNeg/step)*step;t<=Math.round(maxPos/step)*step;t+=step)ticks.push(t);
+  const pts=data.map((d,i)=>`${toX(i)},${toY(d.value)}`).join(' ');
+  const area=`M${toX(0)},${toY(0)} ${data.map((d,i)=>`L${toX(i)},${toY(d.value)}`).join(' ')} L${toX(data.length-1)},${toY(0)}Z`;
+  const findMarker=an=>{const i=data.findIndex(d=>d.annee===an);return i<0?null:{i,v:data[i].value};};
+  const recup=markers?.recup?findMarker(markers.recup.annee):null;
+  const double=markers?.double?findMarker(markers.double.annee):null;
+  return(
+    <div>
+      <svg width="100%" viewBox={`0 0 ${W} ${H+padT+padB}`} style={{overflow:'visible'}}>
+        <defs><linearGradient id="heroFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity="0.22"/><stop offset="100%" stopColor={color} stopOpacity="0"/></linearGradient></defs>
+        {mkGrid(W,H,padL,padR,padT,ticks,toY,"(en milliers d'euros)")}
+        <line x1={padL} x2={W-padR} y1={zeroY} y2={zeroY} stroke="rgba(255,255,255,.15)" strokeWidth={1}/>
+        <path className="area-in" style={{animationDelay:'.6s'}} d={area} fill="url(#heroFill)"/>
+        <polyline className="line-draw" points={pts} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" strokeDasharray={2400} strokeDashoffset={2400}/>
+        {recup&&<circle className="marker-pop" style={{animationDelay:'1.1s'}} cx={toX(recup.i)} cy={toY(recup.v)} r={6} fill="#F5A623" stroke="#0c0c0c" strokeWidth={2}/>}
+        {double&&<circle className="marker-pop" style={{animationDelay:'1.2s'}} cx={toX(double.i)} cy={toY(double.v)} r={6} fill="#8B5CF6" stroke="#0c0c0c" strokeWidth={2}/>}
+        {data.map((d,i)=>(i%2===0||i===data.length-1)&&(
+          <text key={i} x={toX(i)} y={H+padT+padB-4} textAnchor="middle" fontSize={9} fill="#6b6b6b" fontFamily={FONT}>{d.annee}</text>
+        ))}
+        <text x={W/2} y={H+padT+padB+2} textAnchor="middle" fontSize={9.5} fill="#6b6b6b" fontFamily={FONT}>(année)</text>
+      </svg>
+      {(recup||double)&&(
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginTop:12}}>
+          {recup&&(
+            <div style={{border:'1px solid rgba(255,255,255,.08)',borderRadius:6,padding:'8px 12px',display:'flex',gap:8,alignItems:'center'}}>
+              <span style={{width:10,height:10,borderRadius:'50%',background:'#F5A623',flexShrink:0}}/>
+              <div><p style={{fontSize:11,fontWeight:600,color:'#ffffff',margin:0}}>Récupération de l'apport</p><p style={{fontSize:10.5,color:'#6b7280',margin:0}}>Année {markers.recup.annee} – Vous récupérez vos {fmtEur(markers.recup.montant)}</p></div>
+            </div>
+          )}
+          {double&&(
+            <div style={{border:'1px solid rgba(255,255,255,.08)',borderRadius:6,padding:'8px 12px',display:'flex',gap:8,alignItems:'center'}}>
+              <span style={{width:10,height:10,borderRadius:'50%',background:'#8B5CF6',flexShrink:0}}/>
+              <div><p style={{fontSize:11,fontWeight:600,color:'#ffffff',margin:0}}>Double de l'apport</p><p style={{fontSize:10.5,color:'#6b7280',margin:0}}>Année {markers.double.annee} – Vous atteignez {fmtEur(markers.double.montant)}</p></div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+const GroupedHeroChart=({data})=>{
+  const vals=data.flatMap(r=>[r.capital,r.cashflow]);
+  const maxPos=Math.max(1,...vals.filter(v=>v>0));
+  const maxNeg=Math.max(1,...vals.filter(v=>v<0).map(Math.abs));
+  const W=1160,H=420,padL=100,padR=20,padT=28,padB=64;
+  const slot=(W-padL-padR)/data.length;
+  const gap=Math.max(1,slot*0.1);
+  const bw=Math.max(2,(slot-gap*3)/2);
+  const zeroY=padT+H*maxPos/(maxPos+maxNeg);
+  const barH=v=>Math.max(1.5,H*Math.abs(v)/(maxPos+maxNeg));
+  const step=Math.ceil((maxPos+maxNeg)/4/1000)*1000||1;
+  const ticks=[];for(let t=-Math.round(maxNeg/step)*step;t<=Math.round(maxPos/step)*step;t+=step)ticks.push(t);
+  const toY=v=>v>=0?zeroY-H*v/(maxPos+maxNeg):zeroY+H*(-v)/(maxPos+maxNeg);
+  return(
+    <div>
+      <svg width="100%" viewBox={`0 0 ${W} ${H+padT+padB}`} style={{overflow:'visible'}}>
+        {mkGrid(W,H,padL,padR,padT,ticks,toY,"(en milliers d'euros)")}
+        <line x1={padL} x2={W-padR} y1={zeroY} y2={zeroY} stroke="rgba(255,255,255,.15)" strokeWidth={1}/>
+        {data.map((r,i)=>{
+          const xBase=padL+i*slot+gap;
+          const hCap=barH(r.capital),hCF=barH(r.cashflow);
+          const delay=`${Math.min(i*45,900)}ms`;
+          return<g key={i}>
+            <rect className="bar-grow" style={{animationDelay:delay,transformOrigin:r.capital>=0?'bottom':'top'}} x={xBase} y={r.capital>=0?zeroY-hCap:zeroY} width={bw} height={hCap} fill="#E9C766" rx={1.5}/>
+            <rect className="bar-grow" style={{animationDelay:delay,transformOrigin:r.cashflow>=0?'bottom':'top'}} x={xBase+bw+gap} y={r.cashflow>=0?zeroY-hCF:zeroY} width={bw} height={hCF} fill="#8A6D1C" rx={1.5}/>
+            <text x={xBase+bw+gap/2} y={H+padT+padB-4} textAnchor="middle" fontSize={9} fill="#6b6b6b" fontFamily={FONT}>{r.annee}</text>
+          </g>;
+        })}
+        <text x={W/2} y={H+padT+padB+2} textAnchor="middle" fontSize={9.5} fill="#6b6b6b" fontFamily={FONT}>(année)</text>
+      </svg>
+      <div style={{display:'flex',justifyContent:'center',gap:22,marginTop:10}}>
+        {[{color:'#E9C766',label:'Capital remboursé'},{color:'#8A6D1C',label:'Cash-flow annuel'}].map((it,i)=>(
+          <div key={i} style={{display:'flex',alignItems:'center',gap:6}}>
+            <div style={{width:10,height:10,borderRadius:2,background:it.color,flexShrink:0}}/>
+            <span style={{fontSize:11,color:'#9ca3af',fontFamily:FONT}}>{it.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+const ChartCarousel=({fin,p})=>{
+  const [idx,setIdx]=useState(0);
+  const metric=HERO_METRICS[idx];
+  const cfg=heroConfig(metric,{...fin,wealthCreated:fin.creation-p.apport},p);
+  return(
+    <div className="premium-card" style={{background:'#0c0c0c',border:'1px solid rgba(255,255,255,.08)',borderRadius:6,padding:16,position:'relative'}}>
+      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:12}}>
+        <div>
+          <p style={{fontSize:13.5,fontWeight:500,color:'#ffffff',margin:0,fontFamily:FONT}}>{cfg.title}</p>
+          <p style={{fontSize:11.5,color:'#6b7280',margin:'2px 0 0',fontFamily:FONT}}>{cfg.subtitle}</p>
+        </div>
+        <span style={{fontSize:18,fontWeight:500,color:'#C9A227',fontFamily:FONT,whiteSpace:'nowrap'}}>{cfg.bigValue}</span>
+      </div>
+      <div style={{position:'relative'}}>
+        <button className="arrow-btn" disabled={idx===0} onClick={()=>setIdx(i=>i-1)}
+          style={{position:'absolute',left:-6,top:'50%',transform:'translateY(-50%)',width:26,height:26,borderRadius:'50%',background:'rgba(0,0,0,.5)',border:'1px solid rgba(255,255,255,.1)',display:'flex',alignItems:'center',justifyContent:'center',cursor:idx===0?'default':'pointer',opacity:idx===0?.25:1,zIndex:2}}>
+          <Ic n="arrowl" s={12} c="#e0e0e0"/>
+        </button>
+        {cfg.kind==='grouped'?<GroupedHeroChart data={cfg.data}/>:<AreaHeroChart data={cfg.data} color={cfg.color} markers={cfg.markers}/>}
+        <button className="arrow-btn" disabled={idx===HERO_METRICS.length-1} onClick={()=>setIdx(i=>i+1)}
+          style={{position:'absolute',right:-6,top:'50%',transform:'translateY(-50%)',width:26,height:26,borderRadius:'50%',background:'rgba(0,0,0,.5)',border:'1px solid rgba(255,255,255,.1)',display:'flex',alignItems:'center',justifyContent:'center',cursor:idx===HERO_METRICS.length-1?'default':'pointer',opacity:idx===HERO_METRICS.length-1?.25:1,zIndex:2}}>
+          <Ic n="arrowr" s={12} c="#e0e0e0"/>
+        </button>
+      </div>
+      <div style={{display:'flex',justifyContent:'center',gap:5,marginTop:12}}>
+        {HERO_METRICS.map((_,i)=>(
+          <div key={i} className="chart-dot" onClick={()=>setIdx(i)}
+            style={{width:i===idx?18:6,height:6,borderRadius:3,background:i===idx?'#C9A227':'rgba(255,255,255,.15)',transition:'all .2s'}}/>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+/* ── DETAILED TABLE ── */
+const DetailedTable=({fin,p})=>{
+  const rows=fin.rows.slice(0,Math.min(p.dureeCredit||20,25));
+  const capitalRembCumul=[];let cum=0;rows.forEach(r=>{cum+=r.capital;capitalRembCumul.push(cum);});
+  const dash='—';
+  const fmtAbs=v=>fmtEur(Math.abs(v||0));
+  const fmtCur=v=>fmtEur(v||0);
+  const dashZero=(v,fmt=fmtAbs)=>v?fmt(v):dash;
+  const fmtPct=v=>v!=null?`${v.toFixed(2)}%`:dash;
+
+  const sections=[
+    {title:'LOYERS',rows:[
+      {label:'Loyers bruts HT HC',vals:rows.map(r=>fmtCur(r.loyerBrut))},
+      {label:'Vacance (mois)',vals:rows.map(()=>p.vacanceLocative>0?(p.vacanceLocative/100*12).toFixed(1):dash)},
+      {label:'Coût vacance',vals:rows.map(r=>fmtAbs(r.loyerBrutTheo-r.loyerBrut))},
+      {label:'Charges copropriété',vals:rows.map(()=>fmtAbs(p.chargesCoproRefact?0:p.chargesCopro))},
+      {label:'Taxe foncière',vals:rows.map(()=>fmtAbs(p.taxeFonciereRefact?0:p.taxeFonciere))},
+      {label:'Loyers nets',vals:rows.map(r=>fmtCur(r.loyersNets))},
+      {label:'Rendement locatif net',vals:rows.map(r=>fmtPct(r.rendementLocatifNet))},
+    ]},
+    {title:'CRÉDIT BANCAIRE',rows:[
+      {label:'Intérêts',vals:rows.map(r=>fmtAbs(r.interets))},
+      {label:'Capital remboursé',vals:rows.map(r=>fmtAbs(r.capital))},
+      {label:'Échéance annuelle',vals:rows.map(r=>fmtCur(r.echeance))},
+      {label:'Capital restant dû',vals:rows.map(r=>fmtCur(r.capitalRestant))},
+      {label:'IRA',vals:rows.map(r=>dashZero(r.ira))},
+      {label:'Assurance crédit',vals:rows.map(r=>fmtAbs(r.annee<=p.dureeCredit?fin.assuranceAnnuelle:0))},
+    ]},
+    {title:"CHARGES D'EXPLOITATION",rows:[
+      {label:'Gestion locative',vals:rows.map(r=>fmtAbs(r.gestionLoc))},
+      {label:'Charges acquisition',vals:rows.map(()=>dash)},
+      {label:'Travaux bailleur',vals:rows.map(()=>dashZero(p.travauxBailleur))},
+      {label:'Comptabilité',vals:rows.map(()=>fmtAbs(p.comptabiliteAnnuelle))},
+      {label:'Assurance PNE',vals:rows.map(()=>fmtAbs(p.assurancePNE))},
+      {label:'Charges diverses',vals:rows.map(()=>dashZero(p.chargesDiverses))},
+    ]},
+    {title:'FISCALITÉ',rows:[
+      {label:'Amortissement',vals:rows.map(()=>fmtAbs(fin.amortFiscal))},
+      {label:'Bénéfice imposable',vals:rows.map(r=>fmtCur(r.resFiscal))},
+      {label:'Impôt IS',vals:rows.map(r=>fmtAbs(r.IS))},
+    ]},
+    {title:'TVA',rows:[
+      {label:'TVA collectée',vals:rows.map(r=>dashZero(r.tvaCollectee,fmtCur))},
+      {label:'TVA déductible',vals:rows.map(r=>dashZero(r.tvaDeductible,fmtCur))},
+      {label:'Crédit de TVA',vals:rows.map(r=>dashZero(r.creditTVA,fmtCur))},
+      {label:'Trésorerie TVA',vals:rows.map(r=>dashZero(r.tvaNet,fmtCur))},
+    ]},
+    {title:'CASH-FLOW & PATRIMOINE',rows:[
+      {label:'Cash-flow / an',vals:rows.map(r=>fmtCur(r.CF))},
+      {label:'Cash-flow / mois',vals:rows.map(r=>fmtCur(r.CF/12))},
+      {label:'Capital remb. cumulé',vals:capitalRembCumul.map(v=>fmtCur(v))},
+    ]},
+  ];
+
+  const [openSecs,setOpenSecs]=useState(()=>Object.fromEntries(sections.map(s=>[s.title,true])));
+  const togSec=title=>setOpenSecs(s=>({...s,[title]:!s[title]}));
+
+  return(
+    <div className="premium-card" style={{background:'#0c0c0c',border:'1px solid rgba(255,255,255,.08)',borderRadius:6,overflow:'hidden'}}>
+      <div style={{padding:'12px 16px',borderBottom:'1px solid rgba(255,255,255,.06)'}}>
+        <p style={{fontSize:13.5,fontWeight:500,color:'#ffffff',margin:0}}>Tableau annuel détaillé</p>
+      </div>
+      <div style={{overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
+        <table className="dtbl" style={{borderCollapse:'collapse',width:'100%'}}>
+          <thead>
+            <tr style={{borderBottom:'1px solid rgba(255,255,255,.08)'}}>
+              <th className="sticky-col" style={{textAlign:'left',padding:'8px 12px',fontSize:9,textTransform:'uppercase',letterSpacing:'1.4px',color:'#6b7280',fontWeight:500,background:'#0c0c0c'}}>Ligne</th>
+              {rows.map(r=><th key={r.annee} style={{padding:'8px 8px',textAlign:'right',fontSize:9,textTransform:'uppercase',letterSpacing:'1.4px',color:'#6b7280',fontWeight:500,whiteSpace:'nowrap'}}>An {r.annee}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {sections.map((sec,si)=>{
+              const isOpen=!!openSecs[sec.title];
+              return[
+                <tr key={`s${si}`} className="ease-premium" onClick={()=>togSec(sec.title)} style={{cursor:'pointer',background:'rgba(201,162,39,.08)'}}>
+                  <td colSpan={rows.length+1} style={{padding:'8px 12px',fontSize:10,textTransform:'uppercase',letterSpacing:'1.8px',color:'#C9A227',fontWeight:600,borderBottom:'1px solid rgba(255,255,255,.06)'}}>
+                    <span style={{display:'inline-flex',alignItems:'center',gap:6}}>
+                      <span style={{display:'inline-flex',transition:'transform .2s',transform:isOpen?'none':'rotate(-90deg)'}}><Ic n="chevdown" s={11} c="#C9A227"/></span>
+                      {sec.title}
+                    </span>
+                  </td>
+                </tr>,
+                ...(isOpen?sec.rows.map((row,ri)=>(
+                  <tr key={`${si}-${ri}`} className="tbl-tr" style={{borderBottom:'1px solid rgba(255,255,255,.03)'}}>
+                    <td className="sticky-col" style={{color:'#9ca3af',fontSize:11,padding:'6px 12px',background:'#0c0c0c',whiteSpace:'nowrap'}}>{row.label}</td>
+                    {row.vals.map((val,yi)=>{
+                      const isNeg=typeof val==='string'&&val.trim().startsWith('-');
+                      return<td key={yi} style={{textAlign:'right',color:isNeg?'#E8836B':'#d1d5db',fontSize:11,padding:'6px 8px',whiteSpace:'nowrap'}}>{val}</td>;
+                    })}
+                  </tr>
+                )):[])
+              ];
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+/* ── SIMULATOR PRIMITIVES ── */
+const SliderRow=({label,value,min,max,step,unit,onChange,sub})=>{
+  const[editing,setEditing]=useState(false);
+  const[tmp,setTmp]=useState('');
+  const pct=((value-min)/(max-min)*100).toFixed(1);
+  const disp=unit==='€'?fmtEur(value):unit==='%'?`${parseFloat(value.toFixed(2))} %`:`${value} ${unit}`;
+  const commit=()=>{
+    let n=parseFloat(String(tmp).replace(/\s/g,'').replace(',','.').replace(/[^\d.-]/g,''));
+    if(!isNaN(n))onChange(Math.max(min,Math.min(max,n)));
+    setEditing(false);
+  };
+  return(
+    <div style={{marginBottom:16}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:5}}>
+        <span style={{fontSize:11,color:'#888888'}}>{label}</span>
+        {editing?(
+          <input autoFocus type="text" inputMode="decimal" value={tmp}
+            onChange={e=>setTmp(e.target.value)}
+            onBlur={commit}
+            onKeyDown={e=>{if(e.key==='Enter')commit();if(e.key==='Escape')setEditing(false);}}
+            style={{width:84,textAlign:'right',background:'#0d0d14',border:'1px solid rgba(201,162,39,.45)',borderRadius:6,color:'#ffffff',fontSize:13,fontWeight:700,padding:'2px 7px',fontFamily:'inherit',outline:'none'}}/>
+        ):(
+          <span onClick={()=>{setTmp(String(value));setEditing(true);}} title="Cliquer pour saisir une valeur"
+            style={{fontSize:13,fontWeight:700,color:'#ffffff',letterSpacing:'-0.3px',cursor:'text',borderBottom:'1px dashed rgba(255,255,255,.22)',paddingBottom:1}}>{disp}</span>
+        )}
+      </div>
+      <input type="range" min={min} max={max} step={step} value={value} onChange={e=>onChange(Number(e.target.value))}
+        style={{background:`linear-gradient(to right,#C9A227 ${pct}%,#1a1a1a ${pct}%)`}}/>
+      {sub&&<div style={{fontSize:10,color:'#505050',marginTop:3}}>{sub}</div>}
+    </div>
+  );
+};
+const TogRow=({label,value,onChange,sub,disabled})=>(
+  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16,opacity:disabled?0.4:1}}>
+    <div><div style={{fontSize:11,color:'#888888'}}>{label}</div>{sub&&<div style={{fontSize:10,color:'#505050',marginTop:1}}>{sub}</div>}</div>
+    <div onClick={()=>!disabled&&onChange(!value)} style={{width:34,height:19,borderRadius:10,cursor:disabled?'default':'pointer',position:'relative',flexShrink:0,marginLeft:12,background:value?'#C9A227':'#1a1a24',border:`1px solid ${value?'rgba(201,162,39,.5)':'rgba(255,255,255,.08)'}`,transition:'all .2s'}}>
+      <div style={{position:'absolute',top:3,left:value?16:3,width:11,height:11,borderRadius:'50%',background:value?'#111':'#3a3a4a',transition:'left .2s'}}/>
+    </div>
+  </div>
+);
+const SecHdr=({label})=>(
+  <div style={{fontSize:9,color:'#C9A227',fontWeight:700,textTransform:'uppercase',letterSpacing:'1px',marginBottom:12,paddingBottom:8,borderBottom:'1px solid rgba(255,255,255,.05)'}}>{label}</div>
+);
+const AccSection=({title,sub,badge,children,isOpen,onToggle})=>(
+  <div style={{background:'#262626',border:'1px solid rgba(255,255,255,.1)',borderRadius:14,overflow:'hidden'}}>
+    <div className="acc-hdr" onClick={onToggle} style={{padding:'15px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+      <div style={{display:'flex',alignItems:'center',gap:10}}>
+        <span style={{fontSize:13,fontWeight:600,color:'#e0e0e0'}}>{title}</span>
+        {sub&&<span style={{fontSize:10,color:'#555555'}}>{sub}</span>}
+        {badge&&<span style={{fontSize:10,color:'#C9A227',background:'rgba(201,162,39,.08)',border:'1px solid rgba(201,162,39,.18)',borderRadius:5,padding:'2px 8px',fontWeight:700}}>{badge}</span>}
+      </div>
+      <div style={{width:24,height:24,borderRadius:7,background:'rgba(255,255,255,.04)',display:'flex',alignItems:'center',justifyContent:'center',transition:'transform .22s',transform:isOpen?'rotate(180deg)':'none'}}>
+        <Ic n="chevdown" s={12} c="#555555"/>
+      </div>
+    </div>
+    {isOpen&&<div style={{padding:'0 20px 20px',borderTop:'1px solid rgba(255,255,255,.04)'}}><div style={{paddingTop:18}}>{children}</div></div>}
+  </div>
+);
+const MKpi=({label,value,sub,color,border})=>(
+  <div style={{background:'#121212',border:`1px solid ${border||'rgba(255,255,255,.06)'}`,borderRadius:11,padding:'15px 16px'}}>
+    <div style={{fontSize:9,color:'#666666',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.8px',marginBottom:10}}>{label}</div>
+    <div style={{fontSize:22,fontWeight:800,color:color||'#ffffff',letterSpacing:'-0.5px',lineHeight:1}}>{value}</div>
+    {sub&&<div style={{fontSize:10,color:'#555555',marginTop:6,lineHeight:1.4}}>{sub}</div>}
+  </div>
+);
+const MHero=({label,value,sub,border})=>(
+  <div style={{background:'#121212',border:`1px solid ${border||'rgba(255,255,255,.06)'}`,borderRadius:12,padding:'20px 18px',flex:1}}>
+    <div style={{fontSize:9,color:'#666666',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.9px',marginBottom:10}}>{label}</div>
+    <div style={{fontSize:22,fontWeight:800,color:'#ffffff',letterSpacing:'-0.5px',lineHeight:1}}>{value}</div>
+    {sub&&<div style={{fontSize:10,color:'#777777',marginTop:7}}>{sub}</div>}
+  </div>
+);
+
+/* ── FINANCIAL SIMULATOR ── */
+const SIM_TABS=[
+  {id:'graphiques',label:'Graphiques'},
+  {id:'revente',label:'Revente'},
+  {id:'negociation',label:'Négociation'},
+  {id:'loyer',label:'Loyer'},
+];
+const SideAcc=({label,children,isOpen,onToggle})=>(
+  <div>
+    <div className="acc-hdr" onClick={onToggle} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 2px',borderBottom:'1px solid rgba(255,255,255,.05)'}}>
+      <span style={{fontSize:10.5,color:'#999999',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.9px'}}>{label}</span>
+      <span style={{display:'flex',transition:'transform .3s cubic-bezier(.4,0,.2,1)',transform:isOpen?'rotate(180deg)':'none'}}><Ic n="chevdown" s={11} c="#666666"/></span>
+    </div>
+    {isOpen&&<div className="anim-fade" style={{padding:'14px 2px 8px'}}>{children}</div>}
+  </div>
+);
+const FlatKpiRow=({items})=>(
+  <div className="premium-card" style={{display:'flex',border:'1px solid rgba(255,255,255,.08)',borderRadius:6,background:'#0c0c0c',overflow:'hidden'}}>
+    {items.map((it,i)=>(
+      <div key={i} className="anim-fade" style={{flex:1,minWidth:0,padding:'12px 16px',borderLeft:i>0?'1px solid rgba(255,255,255,.06)':'none',animationDelay:`${i*60}ms`}}>
+        <p style={{fontSize:9,color:'#9ca3af',fontWeight:500,textTransform:'uppercase',letterSpacing:'1.6px',margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{it.label}</p>
+        <p style={{fontSize:17,fontWeight:500,color:it.color||'#ffffff',margin:'4px 0 0',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{it.value}</p>
+      </div>
+    ))}
+  </div>
+);
+function PMT(rate,nper,pv){
+  if(rate===0)return -pv/nper;
+  const pvif=Math.pow(1+rate,nper);
+  return -(rate*pv*pvif)/(pvif-1);
+}
+// Traduit l'état p du simulateur vers la forme attendue par computeScenario/computeLoyer
+const buildSimParams=p=>({
+  prixBienFAI:p.prixBien,prixBienNegocieRef:p.prixNegocie,apport:p.apport,
+  tauxDroitsEnregistrement:p.tauxDroitsEnregistrement,
+  tauxFeesKlocka:p.tauxFeesBailBye,feesKlockaType:p.feesBailByeType,tauxIncentiveKlocka:p.tauxIncentiveBailBye,
+  fraisDossierBancaire:p.fraisDossierBancaire,coutCreationSociete:p.fraisCreationSociete,fraisCourtage:p.fraisCourtage,
+  dureeCredit:p.dureeCredit,tauxInteret:p.tauxInteret,loyerInitialHTHC:p.loyerMensuel*12,indexation:p.indexation,
+  anneeRevente:p.anneeRevente,tauxCommissionAgentRevente:p.honoraireAgentRevente,rendementBrutAcheteur:p.rendementBrutAcquereur,
+});
+// Recalcul allégé des indicateurs clés en fonction d'un prix négocié donné (droits, fees, frais, crédit, revente)
+function computeScenario(params,prixNegocie){
+  const{prixBienFAI,apport:apportBase,prixBienNegocieRef,tauxDroitsEnregistrement,tauxFeesKlocka,feesKlockaType,tauxIncentiveKlocka,
+    fraisDossierBancaire,coutCreationSociete,fraisCourtage,dureeCredit,tauxInteret,loyerInitialHTHC,indexation,
+    anneeRevente,tauxCommissionAgentRevente,rendementBrutAcheteur}=params;
+  const feesKlocka=feesKlockaType==='fixe'?tauxFeesKlocka:prixNegocie*(tauxFeesKlocka/100);
+  const incentiveKlocka=(prixBienFAI-prixNegocie)*(tauxIncentiveKlocka/100);
+  const totalFraisKlocka=feesKlocka+incentiveKlocka;
+  const droitsEnregistrement=prixNegocie*(tauxDroitsEnregistrement/100);
+  const fraisDivers=fraisDossierBancaire+coutCreationSociete+fraisCourtage;
+  const prixRevient=prixNegocie+droitsEnregistrement+totalFraisKlocka+fraisDivers;
+  const ratioApport=prixBienNegocieRef>0?apportBase/prixBienNegocieRef:0.15;
+  const apport=Math.round(prixRevient*(ratioApport>0?Math.min(ratioApport,1):0.15));
+  const montantEmprunt=Math.max(0,prixRevient-apport);
+  const echeanceMensuelle=montantEmprunt>0?Math.abs(PMT(tauxInteret/100/12,dureeCredit*12,montantEmprunt)):0;
+  let loyerRevente=loyerInitialHTHC;
+  for(let a=2;a<=anneeRevente;a++)loyerRevente=loyerRevente*(1+indexation/100);
+  const prixVenteFAI=rendementBrutAcheteur>0?loyerRevente/(rendementBrutAcheteur/100):0;
+  const commissionRevente=prixVenteFAI*(tauxCommissionAgentRevente/100);
+  const prixVenteNet=prixVenteFAI-commissionRevente;
+  let capitalRestant=montantEmprunt;
+  const tauxMensuel=tauxInteret/100/12;
+  for(let m=0;m<anneeRevente*12&&capitalRestant>0;m++){
+    const interet=capitalRestant*tauxMensuel;
+    capitalRestant=Math.max(0,capitalRestant-(echeanceMensuelle-interet));
+  }
+  const margeBrute=prixVenteNet-prixRevient;
+  const rendementBrut=prixRevient>0?loyerInitialHTHC/prixRevient*100:0;
+  const patrimoineNet=prixVenteNet-capitalRestant;
+  const creationRichesse=prixVenteNet-capitalRestant-apport;
+  return{prixNegocie:Math.round(prixNegocie),prixRevient:Math.round(prixRevient),apport,
+    montantEmprunt:Math.round(montantEmprunt),echeanceMensuelle:Math.round(echeanceMensuelle),
+    rendementBrut:rendementBrut.toFixed(2),prixVenteNet:Math.round(prixVenteNet),margeBrute:Math.round(margeBrute),
+    patrimoineNet:Math.round(patrimoineNet),creationRichesse:Math.round(creationRichesse)};
+}
+// Recalcul allégé en fonction d'un loyer initial donné (prix/crédit fixes, seul le loyer varie)
+function computeLoyer(params,loyerInitial){
+  const{prixBienFAI,apport:apportBase,prixBienNegocieRef,tauxDroitsEnregistrement,tauxFeesKlocka,feesKlockaType,tauxIncentiveKlocka,
+    fraisDossierBancaire,coutCreationSociete,fraisCourtage,dureeCredit,tauxInteret,indexation,
+    anneeRevente,tauxCommissionAgentRevente,rendementBrutAcheteur}=params;
+  const prixNegocie=prixBienNegocieRef||prixBienFAI||0;
+  const feesKlocka=feesKlockaType==='fixe'?tauxFeesKlocka:prixNegocie*(tauxFeesKlocka/100);
+  const incentiveKlocka=(prixBienFAI-prixNegocie)*(tauxIncentiveKlocka/100);
+  const totalFraisKlocka=feesKlocka+incentiveKlocka;
+  const droitsEnregistrement=prixNegocie*(tauxDroitsEnregistrement/100);
+  const fraisDivers=fraisDossierBancaire+coutCreationSociete+fraisCourtage;
+  const prixRevient=prixNegocie+droitsEnregistrement+totalFraisKlocka+fraisDivers;
+  const ratioApport=prixBienNegocieRef>0?apportBase/prixBienNegocieRef:0.15;
+  const apport=Math.round(prixRevient*(ratioApport>0?Math.min(ratioApport,1):0.15));
+  const montantEmprunt=Math.max(0,prixRevient-apport);
+  const echeanceMensuelle=montantEmprunt>0?Math.abs(PMT(tauxInteret/100/12,dureeCredit*12,montantEmprunt)):0;
+  let loyerRevente=loyerInitial;
+  for(let a=2;a<=anneeRevente;a++)loyerRevente=loyerRevente*(1+indexation/100);
+  const prixVenteFAI=rendementBrutAcheteur>0?loyerRevente/(rendementBrutAcheteur/100):0;
+  const commissionRevente=prixVenteFAI*(tauxCommissionAgentRevente/100);
+  const prixVenteNet=prixVenteFAI-commissionRevente;
+  let capitalRestant=montantEmprunt;
+  const tauxMensuel=tauxInteret/100/12;
+  for(let m=0;m<anneeRevente*12&&capitalRestant>0;m++){
+    const interet=capitalRestant*tauxMensuel;
+    capitalRestant=Math.max(0,capitalRestant-(echeanceMensuelle-interet));
+  }
+  const margeBrute=prixVenteNet-prixRevient;
+  const rendementBrut=prixRevient>0?loyerInitial/prixRevient*100:0;
+  const creationRichesse=prixVenteNet-capitalRestant-apport;
+  const cashflowMensuel=loyerInitial/12-echeanceMensuelle;
+  return{loyerInitial:Math.round(loyerInitial),loyerMensuel:Math.round(loyerInitial/12),loyerRevente:Math.round(loyerRevente),
+    rendementBrut:rendementBrut.toFixed(2),echeanceMensuelle:Math.round(echeanceMensuelle),cashflowMensuel:Math.round(cashflowMensuel),
+    prixVenteNet:Math.round(prixVenteNet),margeBrute:Math.round(margeBrute),creationRichesse:Math.round(creationRichesse)};
+}
+
+const StatCell=({label,value,highlight,negative})=>(
+  <div style={{display:'flex',flexDirection:'column'}}>
+    <span style={{fontSize:10,color:'#6b7280'}}>{label}</span>
+    <span style={{fontSize:14,color:negative?'#f87171':highlight?'#C9A227':'#ffffff'}}>{value}</span>
+  </div>
+);
+
+const HBarChart=({data})=>{
+  // Échelle en racine carrée : compresse l'écart entre les grandes et petites valeurs
+  // pour que les barres plus modestes restent lisibles à côté d'une barre dominante.
+  const scale=v=>Math.sign(v)*Math.sqrt(Math.abs(v));
+  const svals=data.map(d=>scale(d.value));
+  const maxPos=Math.max(1,...svals.filter(v=>v>0));
+  const maxNeg=Math.max(1,...svals.filter(v=>v<0).map(Math.abs));
+  const W=1120,rowH=88,padL=150,padR=140,padTop=12;
+  const H=data.length*rowH;
+  const plotW=W-padL-padR;
+  const zeroX=padL+plotW*maxNeg/(maxPos+maxNeg);
+  const barW=v=>{
+    const s=Math.abs(scale(v));
+    return v>=0?(W-padR-zeroX)*s/maxPos:(zeroX-padL)*s/maxNeg;
+  };
+  return(
+    <svg width="100%" viewBox={`0 0 ${W} ${H+padTop}`}>
+      <line x1={zeroX} x2={zeroX} y1={padTop} y2={H+padTop} stroke="rgba(255,255,255,.15)" strokeWidth={1}/>
+      {data.map((d,i)=>{
+        const y=padTop+i*rowH+rowH*0.2,h=rowH*0.5,w=barW(d.value);
+        const x=d.value>=0?zeroX:zeroX-w;
+        return<g key={i}>
+          <text x={padL} y={y-4} fontSize={10} fill="#cbd5e1" fontFamily={FONT}>{d.label}</text>
+          <rect className="hbar-grow" style={{animationDelay:`${i*130}ms`,transformOrigin:d.value>=0?'left':'right'}} x={x} y={y} width={Math.max(1,w)} height={h} fill={d.fill} rx={2}/>
+          <text x={d.value>=0?x+w+6:x-6} y={y+h/2+3.5} fontSize={10} fill="#9ca3af" textAnchor={d.value>=0?'start':'end'} fontFamily={FONT}>{fmtK(d.value)}</text>
+        </g>;
+      })}
+    </svg>
+  );
+};
+
+const SimReventeSynthese=({fin,p})=>{
+  const wealthCreated=fin.creation-p.apport;
+  const multipleNet=p.apport>0?(wealthCreated/p.apport).toFixed(2):'—';
+  const items=[
+    {label:'Prix vente FAI',value:fmtEur(fin.valRevente)},
+    {label:'Prix revente net',value:fmtEur(fin.prixNet)},
+    {label:'Capital restant',value:fmtEur(fin.capRestantRevente)},
+    {label:'Apport initial',value:fmtEur(p.apport)},
+    {label:'Cash-flow cumulé',value:fmtEur(fin.totalCF)},
+    {label:'Création richesse',value:fmtEur(wealthCreated),accent:'#C9A227'},
+  ];
+  const barData=[
+    {label:'Création richesse',value:Math.round(wealthCreated),fill:'#D4A93C'},
+    {label:'Prix revente net',value:Math.round(fin.prixNet),fill:'#7FC7BC'},
+    {label:'Cash-flow cumulé',value:Math.round(fin.totalCF),fill:'#3AAE5F'},
+    {label:'Apport',value:Math.round(p.apport),fill:'#6B7280'},
+  ];
+  return(
+    <div className="premium-card" style={{border:'1px solid rgba(255,255,255,.08)',borderRadius:6,background:'#0c0c0c'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px',borderBottom:'1px solid rgba(255,255,255,.06)'}}>
+        <p style={{fontSize:13.5,fontWeight:500,color:'#ffffff',margin:0}}>Synthèse à la revente</p>
+        <p style={{fontSize:13.5,fontWeight:500,color:'#C9A227',margin:0}}>×{multipleNet}</p>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)'}}>
+        {items.map((it,i)=>(
+          <div key={i} style={{padding:'16px',minWidth:0,borderTop:i>=3?'1px solid rgba(255,255,255,.06)':'none',borderLeft:i%3>0?'1px solid rgba(255,255,255,.06)':'none'}}>
+            <p style={{fontSize:9,textTransform:'uppercase',letterSpacing:'1.6px',color:'#6b7280',fontWeight:500,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{it.label}</p>
+            <p style={{fontSize:17,fontWeight:500,color:it.accent||'#ffffff',margin:'4px 0 0',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{it.value}</p>
+          </div>
+        ))}
+      </div>
+      <div style={{padding:'20px 8px 14px',borderTop:'1px solid rgba(255,255,255,.06)'}}>
+        <HBarChart data={barData}/>
+      </div>
+    </div>
+  );
+};
+
+const NIVEAUX_NEGO=[0,2,5,8,10,12,15];
+const SimScenarios=({p})=>{
+  const params=useMemo(()=>buildSimParams(p),[p]);
+  const [niveau,setNiveau]=useState(0);
+  const [customPrix,setCustomPrix]=useState('');
+  const prixRef=params.prixBienNegocieRef||params.prixBienFAI||0;
+  const scenarios=useMemo(()=>NIVEAUX_NEGO.map(n=>({niveau:n,data:computeScenario(params,prixRef*(1-n/100))})),[params,prixRef]);
+  const customActive=customPrix!==''&&!isNaN(Number(customPrix))&&Number(customPrix)>0;
+  const customData=useMemo(()=>customActive?computeScenario(params,Number(customPrix)):null,[params,customPrix,customActive]);
+  const selected=customActive?{niveau:'custom',data:customData}:(scenarios.find(s=>s.niveau===niveau)||scenarios[0]);
+  return(
+    <div style={{display:'flex',flexDirection:'column',gap:14}}>
+      <div>
+        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
+          <Ic n="trend" s={14} c="#C9A227"/>
+          <span style={{fontSize:13.5,fontWeight:500,color:'#ffffff'}}>Simuler une négociation</span>
+        </div>
+        <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+          {scenarios.map(s=>{
+            const active=!customActive&&niveau===s.niveau;
+            return(
+              <button key={s.niveau} className="pill-btn" onClick={()=>{setCustomPrix('');setNiveau(s.niveau);}}
+                style={{display:'flex',flexDirection:'column',alignItems:'center',padding:'10px 16px',borderRadius:10,minWidth:96,
+                  background:active?'rgba(201,162,39,.15)':'#141414',border:`1px solid ${active?'rgba(201,162,39,.5)':'rgba(255,255,255,.08)'}`,color:active?'#ffffff':'#9ca3af'}}>
+                <span style={{fontSize:15}}>-{s.niveau}%</span>
+                <span style={{fontSize:10,color:'#6b7280',marginTop:2}}>{fmtEur(s.data.prixNegocie)}</span>
+              </button>
+            );
+          })}
+          <div className="ease-premium" style={{display:'flex',flexDirection:'column',justifyContent:'center',padding:'8px 16px',borderRadius:10,minWidth:140,
+            background:customActive?'rgba(201,162,39,.15)':'#141414',border:`1px solid ${customActive?'rgba(201,162,39,.5)':'rgba(255,255,255,.08)'}`}}>
+            <span style={{fontSize:10,color:'#6b7280',marginBottom:3}}>Prix personnalisé</span>
+            <input type="number" value={customPrix} onChange={e=>setCustomPrix(e.target.value)} placeholder={fmtEur(prixRef)}
+              style={{background:'transparent',border:'none',color:'#ffffff',fontSize:15,width:'100%',outline:'none'}}/>
+          </div>
+        </div>
+      </div>
+      <div style={{borderRadius:10,border:'1px solid rgba(255,255,255,.08)',background:'#0f0f0f',padding:16}}>
+        <p style={{fontSize:10,textTransform:'uppercase',letterSpacing:'1.8px',color:'#6b7280',margin:'0 0 12px'}}>
+          Scénario sélectionné · {selected.niveau==='custom'?'Prix personnalisé':`Négociation -${selected.niveau}%`}
+        </p>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16}}>
+          <StatCell label="Prix négocié" value={fmtEur(selected.data.prixNegocie)} highlight/>
+          <StatCell label="Prix de revient" value={fmtEur(selected.data.prixRevient)}/>
+          <StatCell label="Apport estimé" value={fmtEur(selected.data.apport)}/>
+          <StatCell label="Montant emprunt" value={fmtEur(selected.data.montantEmprunt)}/>
+          <StatCell label="Échéance / mois" value={fmtEur(selected.data.echeanceMensuelle)}/>
+          <StatCell label="Rendement brut" value={`${selected.data.rendementBrut} %`} highlight/>
+          <StatCell label="Prix vente net" value={fmtEur(selected.data.prixVenteNet)}/>
+          <StatCell label="Marge brute revente" value={fmtEur(selected.data.margeBrute)} highlight/>
+        </div>
+      </div>
+      <div style={{borderRadius:10,border:'1px solid rgba(255,255,255,.08)',background:'#0f0f0f',overflowX:'auto'}}>
+        <table style={{width:'100%',fontSize:11,borderCollapse:'collapse'}}>
+          <thead>
+            <tr style={{color:'#6b7280',borderBottom:'1px solid rgba(255,255,255,.08)'}}>
+              <th style={{textAlign:'left',fontWeight:400,padding:'8px 12px'}}>Négociation</th>
+              <th style={{textAlign:'right',fontWeight:400,padding:'8px 12px'}}>Prix négocié</th>
+              <th style={{textAlign:'right',fontWeight:400,padding:'8px 12px'}}>Prix revient</th>
+              <th style={{textAlign:'right',fontWeight:400,padding:'8px 12px'}}>Rdt brut</th>
+              <th style={{textAlign:'right',fontWeight:400,padding:'8px 12px'}}>Marge brute</th>
+            </tr>
+          </thead>
+          <tbody>
+            {scenarios.map(s=>(
+              <tr key={s.niveau} className="ease-premium" onClick={()=>{setCustomPrix('');setNiveau(s.niveau);}} style={{cursor:'pointer',borderBottom:'1px solid rgba(255,255,255,.04)',background:!customActive&&niveau===s.niveau?'rgba(201,162,39,.1)':'transparent'}}>
+                <td style={{padding:'8px 12px',color:'#ffffff'}}>-{s.niveau}%</td>
+                <td style={{padding:'8px 12px',textAlign:'right',color:'#d1d5db'}}>{fmtEur(s.data.prixNegocie)}</td>
+                <td style={{padding:'8px 12px',textAlign:'right',color:'#d1d5db'}}>{fmtEur(s.data.prixRevient)}</td>
+                <td style={{padding:'8px 12px',textAlign:'right',color:'#d1d5db'}}>{s.data.rendementBrut} %</td>
+                <td style={{padding:'8px 12px',textAlign:'right',color:'#d1d5db'}}>{fmtEur(s.data.margeBrute)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+const NIVEAUX_LOYER=[-10,-5,0,5,10,15,20];
+const SimLoyerRenego=({p})=>{
+  const params=useMemo(()=>buildSimParams(p),[p]);
+  const [niveau,setNiveau]=useState(0);
+  const [customLoyer,setCustomLoyer]=useState('');
+  const loyerRef=params.loyerInitialHTHC||0;
+  const scenarios=useMemo(()=>NIVEAUX_LOYER.map(n=>({niveau:n,data:computeLoyer(params,loyerRef*(1+n/100))})),[params,loyerRef]);
+  const customActive=customLoyer!==''&&!isNaN(Number(customLoyer))&&Number(customLoyer)>0;
+  const customData=useMemo(()=>customActive?computeLoyer(params,Number(customLoyer)):null,[params,customLoyer,customActive]);
+  const selected=customActive?{niveau:'custom',data:customData}:(scenarios.find(s=>s.niveau===niveau)||scenarios.find(s=>s.niveau===0));
+  return(
+    <div style={{display:'flex',flexDirection:'column',gap:14}}>
+      <div>
+        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+          <Ic n="trend" s={14} c="#C9A227"/>
+          <span style={{fontSize:13.5,fontWeight:500,color:'#ffffff'}}>Simuler une renégociation du loyer</span>
+        </div>
+        <p style={{fontSize:11,color:'#6b7280',margin:'0 0 12px'}}>Effet d'une revalorisation (ou baisse) du loyer sur le rendement, le cash-flow et la valeur de revente.</p>
+        <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+          {scenarios.map(s=>{
+            const active=!customActive&&niveau===s.niveau;
+            return(
+              <button key={s.niveau} className="pill-btn" onClick={()=>{setCustomLoyer('');setNiveau(s.niveau);}}
+                style={{display:'flex',flexDirection:'column',alignItems:'center',padding:'10px 16px',borderRadius:10,minWidth:96,
+                  background:active?'rgba(201,162,39,.15)':'#141414',border:`1px solid ${active?'rgba(201,162,39,.5)':'rgba(255,255,255,.08)'}`,color:active?'#ffffff':'#9ca3af'}}>
+                <span style={{fontSize:15}}>{s.niveau>0?'+':''}{s.niveau}%</span>
+                <span style={{fontSize:10,color:'#6b7280',marginTop:2}}>{fmtEur(s.data.loyerInitial)}/an</span>
+              </button>
+            );
+          })}
+          <div className="ease-premium" style={{display:'flex',flexDirection:'column',justifyContent:'center',padding:'8px 16px',borderRadius:10,minWidth:150,
+            background:customActive?'rgba(201,162,39,.15)':'#141414',border:`1px solid ${customActive?'rgba(201,162,39,.5)':'rgba(255,255,255,.08)'}`}}>
+            <span style={{fontSize:10,color:'#6b7280',marginBottom:3}}>Loyer personnalisé /an</span>
+            <input type="number" value={customLoyer} onChange={e=>setCustomLoyer(e.target.value)} placeholder={fmtEur(loyerRef)}
+              style={{background:'transparent',border:'none',color:'#ffffff',fontSize:15,width:'100%',outline:'none'}}/>
+          </div>
+        </div>
+      </div>
+      <div style={{borderRadius:10,border:'1px solid rgba(255,255,255,.08)',background:'#0f0f0f',padding:16}}>
+        <p style={{fontSize:10,textTransform:'uppercase',letterSpacing:'1.8px',color:'#6b7280',margin:'0 0 12px'}}>
+          {selected.niveau==='custom'?'Loyer personnalisé':`Loyer revalorisé · ${selected.niveau>0?'+':''}${selected.niveau}%`}
+        </p>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16}}>
+          <StatCell label="Loyer annuel HT" value={fmtEur(selected.data.loyerInitial)} highlight/>
+          <StatCell label="Loyer mensuel" value={fmtEur(selected.data.loyerMensuel)}/>
+          <StatCell label="Rendement brut" value={`${selected.data.rendementBrut} %`} highlight/>
+          <StatCell label="Échéance / mois" value={fmtEur(selected.data.echeanceMensuelle)}/>
+          <StatCell label="Cash-flow / mois" value={fmtEur(selected.data.cashflowMensuel)} negative={selected.data.cashflowMensuel<0} highlight={selected.data.cashflowMensuel>=0}/>
+          <StatCell label={`Loyer an ${p.anneeRevente}`} value={fmtEur(selected.data.loyerRevente)}/>
+          <StatCell label="Prix vente net" value={fmtEur(selected.data.prixVenteNet)}/>
+          <StatCell label="Marge brute revente" value={fmtEur(selected.data.margeBrute)} highlight/>
+        </div>
+      </div>
+      <div style={{borderRadius:10,border:'1px solid rgba(255,255,255,.08)',background:'#0f0f0f',overflowX:'auto'}}>
+        <table style={{width:'100%',fontSize:11,borderCollapse:'collapse'}}>
+          <thead>
+            <tr style={{color:'#6b7280',borderBottom:'1px solid rgba(255,255,255,.08)'}}>
+              <th style={{textAlign:'left',fontWeight:400,padding:'8px 12px'}}>Revalorisation</th>
+              <th style={{textAlign:'right',fontWeight:400,padding:'8px 12px'}}>Loyer / an</th>
+              <th style={{textAlign:'right',fontWeight:400,padding:'8px 12px'}}>Rdt brut</th>
+              <th style={{textAlign:'right',fontWeight:400,padding:'8px 12px'}}>Cash-flow/mois</th>
+              <th style={{textAlign:'right',fontWeight:400,padding:'8px 12px'}}>Prix vente net</th>
+            </tr>
+          </thead>
+          <tbody>
+            {scenarios.map(s=>(
+              <tr key={s.niveau} className="ease-premium" onClick={()=>{setCustomLoyer('');setNiveau(s.niveau);}} style={{cursor:'pointer',borderBottom:'1px solid rgba(255,255,255,.04)',background:!customActive&&niveau===s.niveau?'rgba(201,162,39,.1)':'transparent'}}>
+                <td style={{padding:'8px 12px',color:'#ffffff'}}>{s.niveau>0?'+':''}{s.niveau}%</td>
+                <td style={{padding:'8px 12px',textAlign:'right',color:'#d1d5db'}}>{fmtEur(s.data.loyerInitial)}</td>
+                <td style={{padding:'8px 12px',textAlign:'right',color:'#d1d5db'}}>{s.data.rendementBrut} %</td>
+                <td style={{padding:'8px 12px',textAlign:'right',color:s.data.cashflowMensuel<0?'#f87171':'#d1d5db'}}>{fmtEur(s.data.cashflowMensuel)}</td>
+                <td style={{padding:'8px 12px',textAlign:'right',color:'#d1d5db'}}>{fmtEur(s.data.prixVenteNet)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+const defaultParams=(iL,iP)=>({
+  surface:100,
+  loyerMensuel:iL,prixBien:iP,prixNegocie:Math.round(iP*0.98),
+  dureeCredit:20,apport:Math.round(iP*0.17),indexation:2.0,
+  tva:false,tauxTVA:20.0,chargesCopro:1200,chargesCoproRefact:false,taxeFonciere:1800,taxeFonciereRefact:false,
+  tauxInteret:3.5,tauxAssuranceCredit:0.25,pretInFine:false,vacanceLocative:0,
+  commissionAgentActive:true,commissionAgentType:'pct',tauxCommissionAgent:5.0,commissionAgentInclusFAI:true,
+  tauxDroitsEnregistrement:8.0,
+  feesBailByeType:'pct',tauxFeesBailBye:0,tauxIncentiveBailBye:0,
+  revalorisationActive:false,loyerRevalorise:Math.round(iL*12*1.1),anneeRevalorisation:5,
+  renegociationActive:false,anneeRenegociation:5,nouveauTauxRenegociation:2.5,moisIRA:6,
+  fraisCreationSociete:1500,fraisDossierBancaire:500,fraisCourtage:1500,
+  comptabiliteAnnuelle:1200,assurancePNE:800,gestionLocativePct:0,
+  chargesDiverses:500,travauxBailleur:500,
+  anneeRevente:10,honoraireAgentRevente:5.0,rendementBrutAcquereur:6.0,
+});
+
+const FinancialSimulator=({prefill})=>{
+  const iL=prefill?.loyerAnnuel?Math.max(300,Math.round(parseAmt(prefill.loyerAnnuel)/12)):4000;
+  const iP=prefill?.prixAcquisition?Math.max(50000,parseAmt(prefill.prixAcquisition)):600000;
+  const [p,setP]=useState(()=>{
+    const urlParams=new URLSearchParams(window.location.search);
+    const dataParam=urlParams.get('data');
+    if(dataParam){try{return{...defaultParams(iL,iP),...JSON.parse(dataParam)};}catch(e){}}
+    return defaultParams(iL,iP);
+  });
+  const [activeTab,setActiveTab]=useState('graphiques');
+  const [openSide,setOpenSide]=useState({});
+  const [shareCopied,setShareCopied]=useState(false);
+  const toggleSide=k=>setOpenSide(s=>({...s,[k]:!s[k]}));
+  const set=k=>v=>setP(prev=>({...prev,[k]:v}));
+  const fin=useMemo(()=>computeFinancials(p),[p]);
+
+  const wealthCreated=fin.creation-p.apport;
+  const multipleNet=p.apport>0?(wealthCreated/p.apport).toFixed(2):'—';
+
+  const handleReset=()=>{
+    setP(defaultParams(iL,iP));
+    window.history.replaceState({},'',window.location.pathname);
+  };
+  const handleShare=()=>{
+    const url=window.location.origin+window.location.pathname+'?data='+encodeURIComponent(JSON.stringify(p));
+    try{navigator.clipboard?.writeText(url).catch(()=>{});}catch(e){}
+    setShareCopied(true);setTimeout(()=>setShareCopied(false),2000);
+  };
+  const handleExport=()=>{
+    const headers=['Année','Loyer brut HT','Loyers nets','Intérêts','Capital remboursé','Échéance annuelle','Capital restant dû','Charges exploitation','IS','Cash-flow annuel'];
+    const lines=[headers.join(';'),...fin.rows.map(r=>[r.annee,r.loyerBrut,r.loyersNets,r.interets,r.capital,r.echeance,r.capitalRestant,r.chargesExploit,r.IS,r.CF].join(';'))];
+    const blob=new Blob(['﻿'+lines.join('\n')],{type:'text/csv;charset=utf-8;'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download='simulation-bail-bye.csv';a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const kpiItems=[
+    {label:'Rendement net',value:`${fin.rendementLocatifGlobalNet.toFixed(1)}%`},
+    {label:'Cash-flow / mois',value:`${fin.cfMoisMoyen>=0?'+':''}${fmtEur(fin.cfMoisMoyen)}`,color:fin.cfMoisMoyen>=0?'#22d3a0':'#ef4444'},
+    {label:'Création de richesse',value:fmtEur(wealthCreated),color:wealthCreated>=0?'#22d3a0':'#ef4444'},
+    {label:'Multiple fonds propres',value:`${multipleNet}×`},
+    {label:'TRI brut',value:`${fin.tri}%`},
+  ];
+
+  return(
+    <div>
+      {/* Header */}
+      <div style={{marginBottom:24}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:14}}>
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <div style={{width:8,height:8,borderRadius:'50%',background:'#C9A227',flexShrink:0}}/>
+            <span style={{color:'#ffffff',fontWeight:700,fontSize:16,letterSpacing:'-0.3px'}}>Simulateur</span>
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <button onClick={handleExport} className="btn-g" style={{display:'flex',alignItems:'center',gap:6,borderRadius:20,padding:'7px 15px',fontSize:12,color:'#aaaaaa'}}><Ic n="download" s={12} c="#888888"/>Export complet</button>
+            <button onClick={handleShare} className="btn-g" style={{display:'flex',alignItems:'center',gap:6,borderRadius:20,padding:'7px 15px',fontSize:12,color:'#aaaaaa'}}>{shareCopied?<Ic n="check" s={12} c="#C9A227"/>:<Ic n="link" s={12} c="#888888"/>}{shareCopied?'Copié':'Partager'}</button>
+            <button onClick={handleReset} className="btn-g" style={{display:'flex',alignItems:'center',gap:6,borderRadius:20,padding:'7px 15px',fontSize:12,color:'#aaaaaa'}}><Ic n="ref" s={12} c="#888888"/>Reset</button>
+          </div>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:24,marginTop:22}}>
+          {SIM_TABS.map(t=>(
+            <button key={t.id} className="tab-btn" onClick={()=>setActiveTab(t.id)}
+              style={{background:'none',padding:'8px 0',fontSize:12.5,color:activeTab===t.id?'#ffffff':'#666666',borderBottom:`2px solid ${activeTab===t.id?'#C9A227':'transparent'}`}}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{display:'flex',gap:18,alignItems:'flex-start'}}>
+        {/* LEFT */}
+        <div className="no-scrollbar" style={{width:275,flexShrink:0,overflowY:'auto',maxHeight:'84vh'}}>
+          <div style={{fontSize:10,color:'#777777',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.9px',marginBottom:8}}>Scénario</div>
+          <select value="default" onChange={()=>{}} style={{width:'100%',marginBottom:10}}>
+            <option value="default">Scénario par défaut</option>
+          </select>
+          <div style={{fontSize:11.5,color:'#888888',marginBottom:16}}>Prix de revient <strong style={{color:'#e0e0e0'}}>{fmtEur(fin.budget)}</strong></div>
+
+          <div style={{border:'1px solid rgba(201,162,39,.35)',background:'rgba(201,162,39,.03)',borderRadius:14,padding:'14px 13px',marginBottom:16}}>
+            <div style={{fontSize:9.5,color:'#c9a227',fontWeight:800,textTransform:'uppercase',letterSpacing:'1px',marginBottom:12}}>Champs principaux</div>
+            <SliderRow label="Prix négocié FAI" value={p.prixNegocie} min={50000} max={p.prixBien} step={5000} unit="€" onChange={set('prixNegocie')}/>
+            <SliderRow label="Loyer initial HC HT" value={p.loyerMensuel*12} min={3600} max={240000} step={1200} unit="€" onChange={v=>set('loyerMensuel')(Math.round(v/12))} sub={`Rdt ${fin.rendBrut}% · ${fmtEur(fin.loyerParM2)}/m²`}/>
+            <SliderRow label="Apport" value={p.apport} min={0} max={Math.round(p.prixNegocie*.6)} step={1000} unit="€" onChange={set('apport')} sub={`Crédit : ${fmtK(fin.credit)}`}/>
+            <SliderRow label="Durée crédit" value={p.dureeCredit} min={5} max={25} step={1} unit="ans" onChange={set('dureeCredit')}/>
+            <SliderRow label="Taux intérêt" value={p.tauxInteret} min={1.0} max={7.0} step={0.05} unit="%" onChange={set('tauxInteret')}/>
+            <SliderRow label="Année de revente" value={p.anneeRevente} min={1} max={25} step={1} unit="ans" onChange={set('anneeRevente')}/>
+          </div>
+
+          <SideAcc label="Acquisition" isOpen={!!openSide.acquisition} onToggle={()=>toggleSide('acquisition')}>
+            <SliderRow label="Surface" value={p.surface} min={10} max={500} step={1} unit="m²" onChange={set('surface')}/>
+            <SliderRow label="Prix bien FAI" value={p.prixBien} min={50000} max={5000000} step={5000} unit="€" onChange={set('prixBien')}/>
+            <TogRow label="Commission agent" value={p.commissionAgentActive} onChange={set('commissionAgentActive')}/>
+            {p.commissionAgentActive&&<div className="anim-fade">
+              <TogRow label="Montant fixe" value={p.commissionAgentType==='fixe'} onChange={v=>set('commissionAgentType')(v?'fixe':'pct')} sub={p.commissionAgentType==='fixe'?'Montant en €':'Taux en % du prix négocié'}/>
+              {p.commissionAgentType==='fixe'
+                ?<SliderRow label="Commission agent" value={p.tauxCommissionAgent} min={0} max={50000} step={500} unit="€" onChange={set('tauxCommissionAgent')}/>
+                :<SliderRow label="Commission agent" value={p.tauxCommissionAgent} min={0} max={10} step={0.25} unit="%" onChange={set('tauxCommissionAgent')} sub={`soit ${fmtEur(fin.honorairesAchat)}`}/>}
+              <TogRow label="Inclus dans le prix FAI" value={p.commissionAgentInclusFAI} onChange={set('commissionAgentInclusFAI')} sub={p.commissionAgentInclusFAI?'Déjà compris dans le prix négocié':'Vient en plus du prix négocié'}/>
+            </div>}
+            <SliderRow label="Droits d'enregistrement" value={p.tauxDroitsEnregistrement} min={0} max={10} step={0.1} unit="%" onChange={set('tauxDroitsEnregistrement')} sub={`soit ${fmtEur(fin.droits)}`}/>
+          </SideAcc>
+
+          <SideAcc label="Location" isOpen={!!openSide.location} onToggle={()=>toggleSide('location')}>
+            <SliderRow label="Vacance locative" value={p.vacanceLocative} min={0} max={20} step={0.5} unit="%" onChange={set('vacanceLocative')}/>
+            <SliderRow label="Indexation (ILAT)" value={p.indexation} min={0} max={5} step={0.1} unit="%" onChange={set('indexation')}/>
+            <TogRow label="Revalorisation loyer" value={p.revalorisationActive} onChange={set('revalorisationActive')} sub="Saut ponctuel du loyer à une année donnée"/>
+            {p.revalorisationActive&&<div className="anim-fade">
+              <SliderRow label="Nouveau loyer / an" value={p.loyerRevalorise} min={0} max={200000} step={1000} unit="€" onChange={set('loyerRevalorise')}/>
+              <SliderRow label="Année de revalorisation" value={p.anneeRevalorisation} min={1} max={25} step={1} unit="an" onChange={set('anneeRevalorisation')}/>
+            </div>}
+            <TogRow label="TVA sur loyers" value={p.tva} onChange={set('tva')} sub={`Loyer TTC × 1.${String(Math.round(p.tauxTVA)).padStart(2,'0')}`}/>
+            {p.tva&&<SliderRow label="Taux TVA" value={p.tauxTVA} min={5.5} max={20} step={0.5} unit="%" onChange={set('tauxTVA')}/>}
+            <SliderRow label="Charges copro" value={p.chargesCopro} min={0} max={10000} step={100} unit="€" onChange={set('chargesCopro')}/>
+            <TogRow label="Copro refacturable" value={p.chargesCoproRefact} onChange={set('chargesCoproRefact')}/>
+            <SliderRow label="Taxe foncière" value={p.taxeFonciere} min={0} max={15000} step={100} unit="€" onChange={set('taxeFonciere')}/>
+            <TogRow label="TF refacturable" value={p.taxeFonciereRefact} onChange={set('taxeFonciereRefact')}/>
+          </SideAcc>
+
+          <SideAcc label="Financement" isOpen={!!openSide.financement} onToggle={()=>toggleSide('financement')}>
+            <SliderRow label="Assurance crédit" value={p.tauxAssuranceCredit} min={0} max={1.0} step={0.05} unit="%" onChange={set('tauxAssuranceCredit')}/>
+            <TogRow label="Prêt in fine" value={p.pretInFine} onChange={set('pretInFine')} sub="Intérêts seulement"/>
+          </SideAcc>
+
+          <SideAcc label="Frais & charges" isOpen={!!openSide.frais} onToggle={()=>toggleSide('frais')}>
+            <SliderRow label="Frais création société" value={p.fraisCreationSociete} min={0} max={5000} step={100} unit="€" onChange={set('fraisCreationSociete')}/>
+            <SliderRow label="Frais dossier bancaire" value={p.fraisDossierBancaire} min={0} max={3000} step={100} unit="€" onChange={set('fraisDossierBancaire')}/>
+            <SliderRow label="Frais courtage" value={p.fraisCourtage} min={0} max={5000} step={100} unit="€" onChange={set('fraisCourtage')}/>
+            <SliderRow label="Comptabilité / an" value={p.comptabiliteAnnuelle} min={0} max={5000} step={100} unit="€" onChange={set('comptabiliteAnnuelle')}/>
+            <SliderRow label="Assurance PNE / an" value={p.assurancePNE} min={0} max={3000} step={50} unit="€" onChange={set('assurancePNE')}/>
+            <SliderRow label="Gestion locative" value={p.gestionLocativePct} min={0} max={15} step={0.5} unit="%" onChange={set('gestionLocativePct')}/>
+            <SliderRow label="Charges diverses / an" value={p.chargesDiverses} min={0} max={5000} step={100} unit="€" onChange={set('chargesDiverses')}/>
+            <SliderRow label="Travaux bailleur / an" value={p.travauxBailleur} min={0} max={10000} step={100} unit="€" onChange={set('travauxBailleur')}/>
+          </SideAcc>
+
+          <SideAcc label="Revente" isOpen={!!openSide.revente} onToggle={()=>toggleSide('revente')}>
+            <SliderRow label="Hon. agent revente" value={p.honoraireAgentRevente} min={0} max={10} step={0.5} unit="%" onChange={set('honoraireAgentRevente')}/>
+            <SliderRow label="Rdt brut acquéreur" value={p.rendementBrutAcquereur} min={3} max={12} step={0.1} unit="%" onChange={set('rendementBrutAcquereur')} sub={`Valeur estimée : ${fmtK(fin.valRevente)}`}/>
+          </SideAcc>
+
+          <SideAcc label="Paramètres avancés" isOpen={!!openSide.avance} onToggle={()=>toggleSide('avance')}>
+            <TogRow label="Renégociation crédit" value={p.renegociationActive} onChange={set('renegociationActive')} disabled={p.pretInFine} sub="Nouveau taux en cours de crédit"/>
+            {p.renegociationActive&&!p.pretInFine&&<div className="anim-fade">
+              <SliderRow label="Année de renégociation" value={p.anneeRenegociation} min={1} max={p.dureeCredit} step={1} unit="an" onChange={set('anneeRenegociation')}/>
+              <SliderRow label="Nouveau taux" value={p.nouveauTauxRenegociation} min={0.5} max={7} step={0.05} unit="%" onChange={set('nouveauTauxRenegociation')}/>
+              <SliderRow label="IRA" value={p.moisIRA} min={0} max={12} step={1} unit="mois d'intérêts" onChange={set('moisIRA')}/>
+            </div>}
+          </SideAcc>
+        </div>
+
+        {/* RIGHT */}
+        <div key={activeTab} className="anim-fade" style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',gap:14}}>
+          {activeTab==='negociation'?(
+            <SimScenarios p={p}/>
+          ):activeTab==='loyer'?(
+            <SimLoyerRenego p={p}/>
+          ):(<>
+            <DonutChart fin={fin} p={p}/>
+            <FlatKpiRow items={kpiItems}/>
+            {activeTab==='graphiques'&&<ChartCarousel fin={fin} p={p}/>}
+            {activeTab==='revente'&&<SimReventeSynthese fin={fin} p={p}/>}
+          </>)}
+          {activeTab!=='loyer'&&<DetailedTable fin={fin} p={p}/>}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ── APP ── */
+const App=()=>(
+  <div style={{minHeight:'100vh',background:'#080808',padding:'20px 26px 60px'}}>
+    <div style={{maxWidth:1600,margin:'0 auto'}}>
+      <FinancialSimulator prefill={null}/>
+    </div>
+  </div>
+);
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
