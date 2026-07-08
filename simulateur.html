@@ -294,7 +294,7 @@ const DonutChart=({fin,p})=>{
         <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',gap:10}}>
           {segs.map((s,i)=>(
             <div key={i} className="anim-fade" style={{display:'flex',alignItems:'center',justifyContent:'space-between',fontSize:14,animationDelay:`${i*70}ms`}}>
-              <span style={{color:'#9ca3af',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',paddingRight:12}}>{s.l}</span>
+              <span style={{color:'#ffffff',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',paddingRight:12}}>{s.l}</span>
               <span style={{color:'#ffffff',fontWeight:500,whiteSpace:'nowrap'}}>{fmtEur(s.v)}</span>
             </div>
           ))}
@@ -322,9 +322,9 @@ const mkGrid=(W,H,padL,padR,padT,ticks,toY,label)=>(
 
 const HERO_METRICS=['richesse','cashflow','patrimoine'];
 const heroConfig=(metric,fin,p)=>{
-  const rows=fin.rows.slice(0,p.anneeRevente);
+  const rows=fin.rows.slice(0,p.dureeCredit);
   if(metric==='cashflow')return{
-    kind:'area',title:'Cash-flow annuel',subtitle:`Projection sur ${p.anneeRevente} ans`,
+    kind:'area',title:'Cash-flow annuel',subtitle:`Projection sur ${p.dureeCredit} ans`,
     bigValue:fmtEur(fin.cfMoyenAn),color:'#C9A227',
     data:rows.map(r=>({annee:r.annee,value:r.CF})),
   };
@@ -338,7 +338,7 @@ const heroConfig=(metric,fin,p)=>{
     },
   };
   return{
-    kind:'grouped',title:'Création de richesse annuelle',subtitle:`Cash-flow + capital remboursé sur ${p.anneeRevente} ans`,
+    kind:'grouped',title:'Création de richesse annuelle',subtitle:`Cash-flow + capital remboursé sur ${p.dureeCredit} ans`,
     bigValue:fmtEur(fin.wealthCreated),
     data:rows.map(r=>({annee:r.annee,capital:Math.abs(r.capital),cashflow:r.CF})),
   };
@@ -347,7 +347,7 @@ const AreaHeroChart=({data,color,markers})=>{
   const vals=data.map(d=>d.value);
   const maxPos=Math.max(1,...vals.filter(v=>v>0));
   const maxNeg=Math.max(1,...vals.filter(v=>v<0).map(Math.abs));
-  const W=1160,H=420,padL=100,padR=20,padT=28,padB=64;
+  const W=1160,H=250,padL=100,padR=20,padT=28,padB=64;
   const zeroY=padT+H*maxPos/(maxPos+maxNeg);
   const toX=i=>padL+(W-padL-padR)*i/(data.length-1||1);
   const toY=v=>v>=0?zeroY-H*v/(maxPos+maxNeg):zeroY+H*(-v)/(maxPos+maxNeg);
@@ -396,7 +396,7 @@ const GroupedHeroChart=({data})=>{
   const vals=data.flatMap(r=>[r.capital,r.cashflow]);
   const maxPos=Math.max(1,...vals.filter(v=>v>0));
   const maxNeg=Math.max(1,...vals.filter(v=>v<0).map(Math.abs));
-  const W=1160,H=420,padL=100,padR=20,padT=28,padB=64;
+  const W=1160,H=250,padL=100,padR=20,padT=28,padB=64;
   const slot=(W-padL-padR)/data.length;
   const gap=Math.max(1,slot*0.1);
   const bw=Math.max(2,(slot-gap*3)/2);
